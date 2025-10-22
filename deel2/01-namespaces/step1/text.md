@@ -6,7 +6,7 @@ Namespaces zijn virtuele clusters binnen een fysiek Kubernetes cluster. Ze biede
 
 ## Waarom Namespaces Gebruiken?
 
-- **Organisatie**: Verschillende teams of projecten kunnen hun eigen namespace hebben
+- **Organisatie**: Verschillende klanten of projecten kunnen hun eigen namespace hebben
 - **Isolatie**: Resources in verschillende namespaces kunnen niet direct met elkaar communiceren
 - **Resource Management**: Je kunt quota's en limits instellen per namespace
 - **Security**: RBAC policies kunnen per namespace worden toegepast
@@ -30,7 +30,7 @@ kubectl get namespaces
 Je kunt ook de korte versie gebruiken:
 
 ```plain
-kubectl get ns
+k get ns
 ```{{exec}}
 
 ## Wat zie je?
@@ -45,9 +45,7 @@ Nu ga je je kennis toetsen door een praktische opdracht uit te voeren. Je moet h
 
 1. **Voer het commando uit om alle namespaces te bekijken**
 2. **Tel het totale aantal namespaces** (inclusief standaard Kubernetes namespaces)
-3. **Maak een nieuwe namespace aan** met als naam het aantal namespaces dat je hebt geteld
-
-**Belangrijk:** Tel eerst, maak dan pas de namespace aan!
+3. **Maak een nieuwe namespace aan** met als naam het aantal namespaces dat je hebt geteld met daarvoor `ns-`
 
 **Voorbeeld:** Als je 8 namespaces ziet, maak dan een namespace aan met de naam `ns-8`:
 
@@ -59,18 +57,4 @@ kubectl get namespaces
 kubectl create namespace ns-8
 ```
 
-### Opdracht 2: Identificeer Standaard Namespaces
-
-Bekijk de output van [`kubectl get namespaces`](kubectl get namespaces) en identificeer:
-
-1. **Standaard Kubernetes namespaces** (beginnen meestal met `kube-` of zijn `default`)
-2. **Custom namespaces** (aangemaakt voor specifieke applicaties)
-
-### Verificatie
-
-Je opdracht wordt automatisch gecontroleerd. De verificatie controleert:
-- ✅ Of je de namespace commando's hebt uitgevoerd
-- ✅ Of je een namespace hebt aangemaakt met het juiste aantal
-- ✅ Of alle verwachte namespaces bestaan
-
-**Tip:** Gebruik [`kubectl get ns`](kubectl get ns) als afkorting voor `kubectl get namespaces`
+**TIP** Gaat het de eerste keer mis, tel dan je zelf aangemaakte namespace mee!

@@ -16,10 +16,10 @@ Bekijk ook de pods in de database namespace:
 kubectl get pods -n database
 ```{{exec}}
 
-En in de monitoring namespace:
+Of over alle namespaces
 
 ```plain
-kubectl get pods -n monitoring
+kubectl get pods -A -o wide
 ```{{exec}}
 
 ## Deployments per Namespace
@@ -27,11 +27,7 @@ kubectl get pods -n monitoring
 Naast pods kun je ook andere resources per namespace bekijken:
 
 ```plain
-kubectl get deployments -n webapp
-```{{exec}}
-
-```plain
-kubectl get deployments -n database
+kubectl get deployments -n monitoring
 ```{{exec}}
 
 ## Services per Namespace
@@ -42,22 +38,12 @@ Bekijk welke services er in elke namespace draaien:
 kubectl get services -n webapp
 ```{{exec}}
 
-```plain
-kubectl get services -n database
-```{{exec}}
-
 ## Alle Resources in een Namespace
 
 Je kunt ook alle resources in een namespace tegelijk bekijken:
 
 ```plain
 kubectl get all -n webapp
-```{{exec}}
-
-Probeer dit ook voor de monitoring namespace:
-
-```plain
-kubectl get all -n monitoring
 ```{{exec}}
 
 ## 🎯 Praktische Opdracht
@@ -79,24 +65,9 @@ kubectl create secret generic resource-count \
   --from-literal=database-services=2 \
   --from-literal=monitoring-deployments=1
 ```
-
-### Bonus Opdracht: Resource Overzicht
-
-Maak een ConfigMap aan met de naam `namespace-resources` die een overzicht bevat van welke resource types je hebt gevonden in elke namespace.
-
-**Voorbeeld:**
-```bash
-kubectl create configmap namespace-resources \
-  --from-literal=webapp="pods,services,deployments" \
-  --from-literal=database="pods,services" \
-  --from-literal=monitoring="pods,deployments"
-```
-
 ### Verificatie
 
 De verificatie controleert:
 - ✅ Of je resources in verschillende namespaces hebt bekeken
 - ✅ Of je een Secret hebt aangemaakt met correcte resource tellingen
 - ✅ Of je begrijpt hoe namespace isolatie werkt
-
-**Tip:** Gebruik [`kubectl get all -n <namespace>`](kubectl get all -n <namespace>) om alle standaard resources in één keer te zien!

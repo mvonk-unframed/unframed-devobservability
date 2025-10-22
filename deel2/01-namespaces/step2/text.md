@@ -21,7 +21,7 @@ kubectl describe namespace webapp
 Probeer ook eens de database namespace:
 
 ```plain
-kubectl describe namespace database
+kubectl describe namespace monitoring
 ```{{exec}}
 
 ## Namespace Status Begrijpen
@@ -31,14 +31,7 @@ Let op de volgende velden in de output:
 - **Age**: Hoe lang de namespace al bestaat
 - **Labels**: Metadata labels die aan de namespace zijn toegevoegd
 - **Annotations**: Extra metadata informatie
-
-## YAML Output Bekijken
-
-Voor de volledige configuratie van een namespace kun je YAML output gebruiken:
-
-```plain
-kubectl get namespace monitoring -o yaml
-```{{exec}}
+- **Resource Quotas**: Hoeveel mag deze namespace maximaal verbruiken
 
 ## 🎯 Praktische Opdracht
 
@@ -47,12 +40,9 @@ kubectl get namespace monitoring -o yaml
 Je gaat nu labels toevoegen aan namespaces en een analyse maken.
 
 1. **Voeg een label toe** aan de webapp namespace met key `purpose` en value `frontend`
-2. **Voeg een label toe** aan de database namespace met key `purpose` en value `backend`
-3. **Maak een ConfigMap aan** in de `default` namespace met de naam `namespace-analysis` die bevat:
-   - **total-namespaces**: Het totale aantal namespaces
-   - **custom-namespaces**: Het aantal custom namespaces (niet de standaard kube-* namespaces)
-
-**Tip**: Zoek uit hoe je labels toevoegt aan namespaces en hoe je namespaces kunt tellen!
+   **Tip!** gebruik kubectl om info in te winnen `kubectl label namespace --help` 
+2. **Quota verhogen** voeg een quota toe aan de webapp namespace van 1gb en 1cpu
+   **Tip!** gebruik kubectl om info in te winnen `kubectl create quota --help`
 
 ### Wat Leer Je Hiervan?
 
@@ -62,5 +52,3 @@ Door namespaces te beschrijven en labelen leer je:
 3. Of er resource quota's zijn ingesteld
 4. De huidige status van de namespace
 5. Hoe je metadata kunt toevoegen voor organisatie
-
-**Tip:** Gebruik [`kubectl get namespace --show-labels`](kubectl get namespace --show-labels) om alle labels te zien!

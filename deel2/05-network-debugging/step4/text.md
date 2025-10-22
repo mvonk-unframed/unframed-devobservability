@@ -277,75 +277,28 @@ Verwijder tijdelijke bestanden:
 rm -f /tmp/tls.key /tmp/tls.crt
 ```{{exec}}
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Wat is de functie van een Kubernetes Ingress?
+### Opdracht: Ingress Troubleshooting
 
-A) Het beheert pod-to-pod communicatie
-B) Het beheert externe toegang tot services via HTTP/HTTPS
-C) Het maakt secrets aan
-D) Het monitort cluster resources
+Je gaat nu ingress problemen diagnosticeren en repareren.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Identificeer de broken ingress** en analyseer waarom het niet werkt
+2. **Test ingress toegang** met de juiste Host headers
+3. **Repareer het probleem** door de configuratie aan te passen
 
-**Correct antwoord: B**
+**Maak een Secret aan** met de naam `ingress-diagnosis`:
 
-Ingress beheert externe toegang tot services in een cluster, typisch HTTP/HTTPS. Het fungeert als:
-- Reverse proxy
-- Load balancer
-- SSL/TLS termination point
-- Host-based en path-based routing
+```bash
+kubectl create secret generic ingress-diagnosis \
+  --from-literal=broken-ingress="<ingress-naam>" \
+  --from-literal=problem-cause="<oorzaak-van-probleem>" \
+  --from-literal=fix-applied="<wat-je-hebt-gerepareerd>"
+```
 
-Ingress vereist een ingress controller (zoals nginx) om te functioneren.
-</details>
+### Verificatie
 
----
-
-**Vraag 2:** Waarom zou een ingress geen traffic routeren naar een service?
-
-A) De ingress controller is niet geïnstalleerd
-B) De backend service bestaat niet of heeft geen endpoints
-C) De host header komt niet overeen
-D) Alle bovenstaande kunnen de oorzaak zijn
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: D**
-
-Ingress problemen kunnen veroorzaakt worden door:
-- **Geen ingress controller**: Ingress resources doen niets zonder controller
-- **Backend service problemen**: Service bestaat niet of heeft geen endpoints
-- **Host mismatch**: Request host header komt niet overeen met ingress rules
-- **Path mismatch**: URL path komt niet overeen met ingress paths
-- **TLS problemen**: Certificate issues bij HTTPS
-
-Altijd de hele chain controleren: Client → Ingress → Service → Pods.
-</details>
-
----
-
-**Vraag 3:** Hoe test je ingress toegang vanuit een pod?
-
-A) `kubectl exec <pod> -- curl http://<ingress-ip>`
-B) `kubectl exec <pod> -- curl -H "Host: <hostname>" http://<ingress-ip>`
-C) `kubectl exec <pod> -- curl http://<service-name>`
-D) `kubectl exec <pod> -- ping <ingress-ip>`
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-Voor ingress testing moet je de Host header specificeren:
-`kubectl exec <pod> -- curl -H "Host: frontend.local" http://<ingress-ip>`
-
-Dit simuleert een echte client request met de juiste hostname. Zonder Host header weet de ingress controller niet welke rule te gebruiken.
-
-Voor HTTPS: `curl -k -H "Host: secure.local" https://<ingress-ip>`
-</details>
-
----
-
-Je hebt nu ingress en load balancer debugging beheerst!
+De verificatie controleert:
+- ✅ Of je ingress problemen kunt diagnosticeren
+- ✅ Of je de juiste Host headers gebruikt voor testing
+- ✅ Of je ingress configuratie kunt repareren

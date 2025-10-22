@@ -99,79 +99,27 @@ Let op deze belangrijke aspecten:
 3. **YAML toont encoded waarden** - deze kunnen gedecodeerd worden
 4. **Metadata is niet encrypted** - labels en annotations zijn zichtbaar
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Wat toont `kubectl describe secret` NIET?
+### Opdracht: Secret Metadata Analyse
 
-A) Het secret type
-B) De namen van de keys
-C) De gedecodeerde waarden van de keys
-D) Metadata zoals labels en annotations
+Je gaat nu secret metadata analyseren en de structuur begrijpen.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Analyseer een TLS secret** en identificeer de key namen
+2. **Vergelijk een Opaque secret** met een ConfigMap
+3. **Maak een Secret aan** met de naam `secret-metadata` die je analyse bevat:
 
-**Correct antwoord: C**
+```bash
+kubectl create secret generic secret-metadata \
+  --from-literal=tls-keys="<key-namen-gescheiden-door-komma>" \
+  --from-literal=opaque-vs-configmap="<verschil-dat-je-ziet>"
+```
 
-`kubectl describe secret` toont voor security redenen NIET de gedecodeerde waarden. Het toont wel:
-- Secret type
-- Key namen (maar niet de waarden)
-- Metadata (labels, annotations)
-- Aantal bytes per key
+### Verificatie
 
-Voor de waarden moet je `kubectl get secret -o yaml` gebruiken (base64 encoded).
-</details>
+De verificatie controleert:
+- ✅ Of je secret metadata kunt analyseren
+- ✅ Of je verschillende secret types begrijpt
+- ✅ Of je het verschil met ConfigMaps kent
 
----
-
-**Vraag 2:** Wat is het verschil tussen `data` en `stringData` velden in een secret?
-
-A) Ze zijn identiek
-B) `data` is base64 encoded, `stringData` is plain text (alleen bij aanmaken)
-C) `stringData` is voor TLS secrets, `data` is voor andere types
-D) `data` is verplicht, `stringData` is optioneel
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-- **data**: Base64 encoded waarden (zichtbaar in opgeslagen secret)
-- **stringData**: Plain text waarden (alleen gebruikt bij het aanmaken van secrets)
-
-Kubernetes converteert `stringData` automatisch naar base64 en slaat het op in het `data` veld. `stringData` is niet zichtbaar na het aanmaken.
-</details>
-
----
-
-**Vraag 3:** Welk commando toont alleen de key namen van een secret?
-
-A) `kubectl get secret <name> -o yaml`
-B) `kubectl describe secret <name>`
-C) `kubectl get secret <name> -o jsonpath='{.data}' | jq 'keys'`
-D) `kubectl get secret <name> --show-keys`
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: C**
-
-`kubectl get secret <name> -o jsonpath='{.data}' | jq 'keys'` toont alleen de key namen als een JSON array.
-
-Alternatieven zonder jq:
-- `kubectl get secret <name> -o jsonpath='{.data}' | grep -o '"[^"]*":'`
-
-De andere opties tonen meer informatie dan alleen de key namen.
-</details>
-
----
-
-## Wat Leer Je?
-
-Door secret details te bekijken leer je:
-1. Welke credentials beschikbaar zijn
-2. Hoe secrets gestructureerd zijn
-3. Wanneer secrets zijn aangemaakt of gewijzigd
-4. Welke keys beschikbaar zijn voor applicaties
-
-Analyseer de verschillende secrets en probeer te begrijpen welke informatie elk secret bevat!
+**Tip**: Zoek uit hoe je alleen key namen kunt extraheren zonder de waarden te zien!

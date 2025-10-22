@@ -150,82 +150,28 @@ kubectl get pod -n secrets -l app=webapp -o yaml | grep -A 5 "secretKeyRef:"
 ### 4. **Mount Path Conflicts**
 - Meerdere secrets gemount op dezelfde path
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Hoe kun je zien welke secrets een pod gebruikt als environment variables?
+### Opdracht: Pod-Secret Verbinding Analyse
 
-A) `kubectl get pod <name> -o yaml | grep -A 10 "env:"`
-B) `kubectl describe pod <name>`
-C) `kubectl get pod <name> -o jsonpath='{.spec.containers[0].env}'`
-D) Alle bovenstaande opties
+Je gaat nu analyseren hoe pods secrets gebruiken en eventuele problemen identificeren.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Vind een pod die secrets gebruikt** als environment variables
+2. **Vind een pod die secrets gebruikt** als volume mounts
+3. **Identificeer een broken pod** die verwijst naar een non-existent secret
 
-**Correct antwoord: D**
+**Maak een Secret aan** met de naam `pod-secret-analysis`:
 
-Alle opties werken:
-- `kubectl get pod <name> -o yaml | grep -A 10 "env:"` - toont env sectie in YAML
-- `kubectl describe pod <name>` - toont environment variables in leesbare vorm
-- `kubectl get pod <name> -o jsonpath='{.spec.containers[0].env}'` - toont env als JSON
+```bash
+kubectl create secret generic pod-secret-analysis \
+  --from-literal=env-pod="<pod-met-env-secrets>" \
+  --from-literal=volume-pod="<pod-met-volume-secrets>" \
+  --from-literal=broken-pod="<pod-met-missing-secret>"
+```
 
-Elke methode heeft zijn voordelen afhankelijk van wat je wilt zien.
-</details>
+### Verificatie
 
----
-
-**Vraag 2:** Wat gebeurt er als een pod verwijst naar een non-existent secret?
-
-A) De pod start normaal maar de environment variables zijn leeg
-B) De pod kan niet starten en blijft in Pending status
-C) Kubernetes maakt automatisch een lege secret aan
-D) De pod crasht met een error
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-Als een pod verwijst naar een non-existent secret:
-- De pod kan niet starten
-- Status blijft "Pending"
-- Events tonen "FailedMount" of vergelijkbare errors
-- Kubernetes wacht tot de secret beschikbaar is
-
-Dit is een safety feature om te voorkomen dat pods starten zonder benodigde credentials.
-</details>
-
----
-
-**Vraag 3:** Wat is het verschil tussen secrets als environment variables vs. volume mounts?
-
-A) Environment variables zijn veiliger
-B) Volume mounts zijn sneller
-C) Environment variables zijn zichtbaar in proces lijst, volume mounts niet
-D) Er is geen verschil
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: C**
-
-Belangrijke verschillen:
-- **Environment variables**: Zichtbaar in proces lijst (`ps aux`), minder veilig
-- **Volume mounts**: Niet zichtbaar in proces lijst, veiliger
-- **Volume mounts**: Kunnen automatisch updaten bij secret wijzigingen
-- **Environment variables**: Vereisen pod restart voor updates
-
-Volume mounts zijn over het algemeen veiliger voor gevoelige data.
-</details>
-
----
-
-## Debugging Workflow
-
-1. **Check Pod Status**: Is de pod running?
-2. **Verify Secret Exists**: Bestaat de gerefereerde secret?
-3. **Check Secret Keys**: Zijn de key namen correct?
-4. **Validate Mount Paths**: Zijn er conflicten in mount paths?
-5. **Test Access**: Kan de pod de secret data lezen?
-
-Analyseer nu de verschillende pod-secret verbindingen en identificeer eventuele problemen!
+De verificatie controleert:
+- ✅ Of je pod-secret verbindingen kunt identificeren
+- ✅ Of je verschillende secret usage patterns begrijpt
+- ✅ Of je broken secret references kunt vinden

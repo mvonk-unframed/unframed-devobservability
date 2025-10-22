@@ -72,28 +72,7 @@ kubectl config set-context --current --namespace=default
 
 ### Opdracht: Context Management Demonstratie
 
-Je gaat nu demonstreren dat je context management beheerst door een specifieke workflow uit te voeren.
-
-1. **Stel de monitoring namespace in als default**
-2. **Maak een pod aan** in de huidige default namespace (monitoring) met de naam `context-test-pod`
-3. **Verander de default namespace** naar `development`
-4. **Maak een ConfigMap aan** in de nieuwe default namespace met de naam `context-demo`
-
-**Commando's die je nodig hebt:**
-
-```bash
-# Stap 1: Stel monitoring als default in
-kubectl config set-context --current --namespace=monitoring
-
-# Stap 2: Maak pod aan (zal in monitoring namespace komen)
-kubectl run context-test-pod --image=busybox --command -- sleep 3600
-
-# Stap 3: Verander naar development namespace
-kubectl config set-context --current --namespace=development
-
-# Stap 4: Maak ConfigMap aan (zal in development namespace komen)
-kubectl create configmap context-demo --from-literal=message="Default namespace changed successfully"
-```
+Je gaat nu demonstreren dat je context management beheerst door `frontend` als default namespace in te stellen
 
 ### Verificatie
 

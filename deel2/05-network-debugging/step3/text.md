@@ -233,87 +233,28 @@ for service in $SERVICES; do
 done
 ```{{exec}}
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Welk commando test of een service bereikbaar is via DNS?
+### Opdracht: Connectivity Troubleshooting
 
-A) `kubectl exec <pod> -- ping <service>`
-B) `kubectl exec <pod> -- nslookup <service>`
-C) `kubectl exec <pod> -- dig <service>`
-D) Zowel B als C zijn correct
+Je gaat nu pod-to-service connectivity problemen diagnosticeren en oplossen.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Test DNS resolution** voor alle services
+2. **Test port connectivity** met netcat
+3. **Identificeer een connectivity probleem** en los het op
 
-**Correct antwoord: D**
+**Maak een Secret aan** met de naam `connectivity-test`:
 
-Beide commando's testen DNS resolution:
-- `nslookup <service>` - basis DNS lookup
-- `dig <service>` - meer gedetailleerde DNS informatie
-
-Je kunt ook de volledige FQDN gebruiken:
-`nslookup frontend-service.network.svc.cluster.local`
-</details>
-
----
-
-**Vraag 2:** Wat is het verschil tussen service port en target port?
-
-A) Er is geen verschil
-B) Service port is extern, target port is intern
-C) Service port is waar clients verbinden, target port is de pod port
-D) Target port is altijd 80
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: C**
-
-- **Service port**: De port waar clients mee verbinden (bijv. 8080)
-- **Target port**: De daadwerkelijke port op de pod (bijv. 80)
-
-Voorbeeld:
-```yaml
-ports:
-- port: 8080        # Service port (client verbindt hier)
-  targetPort: 80    # Pod port (waar de app luistert)
+```bash
+kubectl create secret generic connectivity-test \
+  --from-literal=dns-working="<service-met-werkende-dns>" \
+  --from-literal=port-working="<service-met-werkende-port>" \
+  --from-literal=connectivity-issue="<probleem-dat-je-hebt-gevonden>"
 ```
 
-Dit maakt port mapping mogelijk tussen service en pods.
-</details>
+### Verificatie
 
----
-
-**Vraag 3:** Welk tool test port connectivity zonder HTTP?
-
-A) `curl`
-B) `wget`
-C) `nc` (netcat)
-D) `ping`
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: C**
-
-`nc` (netcat) test pure TCP/UDP connectivity:
-- `nc -zv <service> <port>` - test of port open is
-- Werkt voor alle protocols (HTTP, database, etc.)
-- Geeft alleen connectiviteit info, geen HTTP response
-
-`curl` en `wget` zijn HTTP-specifiek, `ping` test alleen ICMP (vaak geblokkeerd).
-</details>
-
----
-
-## Wat Heb Je Geleerd?
-
-Je hebt nu:
-- ✅ Pod-to-service connectivity getest
-- ✅ DNS resolution geverifieerd
-- ✅ Port connectivity gecontroleerd
-- ✅ Load balancing geobserveerd
-- ✅ Connectivity problemen gesimuleerd en opgelost
-- ✅ Verschillende troubleshooting tools gebruikt
-
-Pod-to-service connectivity is de basis van microservices communicatie in Kubernetes!
+De verificatie controleert:
+- ✅ Of je DNS resolution kunt testen
+- ✅ Of je port connectivity kunt valideren
+- ✅ Of je connectivity problemen kunt identificeren en oplossen

@@ -54,6 +54,9 @@ kubectl expose deployment backend --port=8080 --target-port=80 -n webapp
 kubectl expose deployment postgres --port=5432 --target-port=5432 -n database
 kubectl expose deployment prometheus --port=9090 --target-port=9090 -n monitoring
 
+# Quota last, cannot effect running pods
+kubectl create quota monitoring-quota -n monitoring --hard=cpu=1,memory=1G
+
 echo "Wachten tot alle pods gestart zijn..."
 sleep 30
 
