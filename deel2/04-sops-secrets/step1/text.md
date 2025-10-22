@@ -93,18 +93,6 @@ data:
 4. **Key Management**: Geautomatiseerde key rotation
 5. **Audit Trail**: Git history toont wijzigingen
 
-## SOPS Workflow Overzicht
-
-```mermaid
-graph LR
-    A[Plain Secret] --> B[SOPS Encrypt]
-    B --> C[Encrypted File]
-    C --> D[Git Repository]
-    D --> E[SOPS Decrypt]
-    E --> F[kubectl apply]
-    F --> G[Kubernetes Secret]
-```
-
 ## Namespace Setup
 
 Controleer of de SOPS namespace is aangemaakt:
