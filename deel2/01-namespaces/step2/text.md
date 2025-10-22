@@ -42,37 +42,17 @@ kubectl get namespace monitoring -o yaml
 
 ## 🎯 Praktische Opdracht
 
-### Opdracht: Namespace Labels Toevoegen
+### Opdracht: Namespace Labels en Analyse
 
-Je gaat nu labels toevoegen aan namespaces om te laten zien dat je begrijpt hoe je namespace metadata kunt beheren.
+Je gaat nu labels toevoegen aan namespaces en een analyse maken.
 
-1. **Bekijk de webapp namespace in YAML formaat** en zoek naar de `labels` sectie
-2. **Voeg een label toe** aan de webapp namespace met key `purpose` en value `frontend`
-3. **Voeg een label toe** aan de database namespace met key `purpose` en value `backend`
+1. **Voeg een label toe** aan de webapp namespace met key `purpose` en value `frontend`
+2. **Voeg een label toe** aan de database namespace met key `purpose` en value `backend`
+3. **Maak een ConfigMap aan** in de `default` namespace met de naam `namespace-analysis` die bevat:
+   - **total-namespaces**: Het totale aantal namespaces
+   - **custom-namespaces**: Het aantal custom namespaces (niet de standaard kube-* namespaces)
 
-**Commando's die je nodig hebt:**
-
-```bash
-# Label toevoegen aan namespace
-kubectl label namespace webapp purpose=frontend
-
-# Label toevoegen aan database namespace
-kubectl label namespace database purpose=backend
-```
-
-### Verificatie Opdracht
-
-Maak een ConfigMap aan in de `default` namespace met de naam `namespace-analysis` die de volgende informatie bevat:
-
-- **total-namespaces**: Het totale aantal namespaces
-- **custom-namespaces**: Het aantal custom namespaces (niet-standaard)
-
-**Voorbeeld:**
-```bash
-kubectl create configmap namespace-analysis \
-  --from-literal=total-namespaces=8 \
-  --from-literal=custom-namespaces=5
-```
+**Tip**: Zoek uit hoe je labels toevoegt aan namespaces en hoe je namespaces kunt tellen!
 
 ### Wat Leer Je Hiervan?
 
