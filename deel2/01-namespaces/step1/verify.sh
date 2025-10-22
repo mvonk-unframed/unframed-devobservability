@@ -24,18 +24,32 @@ for ns in "${default_namespaces[@]}"; do
     fi
 done
 
-# Tel het totale aantal namespaces
+# Tel het totale aantal namespaces (exclusief de nieuwe namespace die de cursist heeft aangemaakt)
 total_namespaces=$(kubectl get namespaces --no-headers | wc -l)
-expected_namespace="ns-$total_namespaces"
 
-# Controleer of de cursist een namespace heeft aangemaakt met het juiste aantal
-if kubectl get namespace "$expected_namespace" &> /dev/null; then
-    echo "✅ Perfect! Je hebt succesvol $total_namespaces namespaces geteld en namespace '$expected_namespace' aangemaakt."
+# Zoek naar een namespace die begint met "ns-" (aangemaakt door cursist)
+created_namespace=$(kubectl get namespaces --no-headers | grep "^ns-" | head -1 | awk '{print $1}')
+
+if [ -z "$created_namespace" ]; then
+    echo "❌ Geen namespace gevonden die begint met 'ns-'."
+    echo "💡 Tip: Tel het aantal namespaces met 'kubectl get namespaces' en maak een namespace aan met 'kubectl create namespace ns-<aantal>'"
+    echo "📊 Ik zie momenteel $total_namespaces namespaces in het cluster."
+    exit 1
+fi
+
+# Extraheer het getal uit de namespace naam
+namespace_number=$(echo "$created_namespace" | sed 's/ns-//')
+
+# Het verwachte aantal zou 1 minder moeten zijn dan het huidige totaal (omdat de cursist er 1 heeft toegevoegd)
+expected_original_count=$((total_namespaces - 1))
+
+if [ "$namespace_number" = "$expected_original_count" ]; then
+    echo "✅ Perfect! Je hebt succesvol $expected_original_count namespaces geteld en namespace '$created_namespace' aangemaakt."
     echo "✅ Je begrijpt nu hoe je namespaces kunt bekijken en beheren."
     exit 0
 else
-    echo "❌ Namespace '$expected_namespace' niet gevonden."
-    echo "💡 Tip: Tel het aantal namespaces met 'kubectl get namespaces' en maak een namespace aan met 'kubectl create namespace ns-<aantal>'"
-    echo "📊 Ik zie momenteel $total_namespaces namespaces in het cluster."
+    echo "❌ Namespace '$created_namespace' gevonden, maar het getal ($namespace_number) komt niet overeen met het verwachte aantal ($expected_original_count)."
+    echo "💡 Tip: Tel het aantal namespaces VOOR je een nieuwe aanmaakt, en gebruik dat getal."
+    echo "📊 Ik zie momenteel $total_namespaces namespaces (inclusief jouw nieuwe namespace)."
     exit 1
 fi

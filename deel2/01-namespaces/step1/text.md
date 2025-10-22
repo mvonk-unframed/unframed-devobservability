@@ -47,9 +47,15 @@ Nu ga je je kennis toetsen door een praktische opdracht uit te voeren. Je moet h
 2. **Tel het totale aantal namespaces** (inclusief standaard Kubernetes namespaces)
 3. **Maak een nieuwe namespace aan** met als naam het aantal namespaces dat je hebt geteld
 
+**Belangrijk:** Tel eerst, maak dan pas de namespace aan!
+
 **Voorbeeld:** Als je 8 namespaces ziet, maak dan een namespace aan met de naam `ns-8`:
 
 ```bash
+# Eerst tellen
+kubectl get namespaces
+# Tel het aantal (bijvoorbeeld 8)
+# Dan namespace aanmaken
 kubectl create namespace ns-8
 ```
 
