@@ -278,13 +278,6 @@ EOF
 echo "Installeren van NGINX Ingress Controller..."
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
 
-# Wacht tot ingress controller klaar is
-echo "Wachten tot ingress controller klaar is..."
-kubectl wait --namespace ingress-nginx \
-  --for=condition=ready pod \
-  --selector=app.kubernetes.io/component=controller \
-  --timeout=120s
-
 # 9. Werkende ingress
 cat <<EOF | kubectl apply -f -
 apiVersion: networking.k8s.io/v1
@@ -356,14 +349,3 @@ spec:
             port:
               number: 8080
 EOF
-
-echo "Wachten tot alle pods gestart zijn..."
-sleep 30
-
-echo "Setup voltooid! Network debugging scenario's zijn klaar."
-echo ""
-echo "Deployed resources:"
-kubectl get all -n network
-echo ""
-echo "Ingress resources:"
-kubectl get ingress -n network

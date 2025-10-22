@@ -31,20 +31,6 @@ Dit is een klassiek network probleem dat je gaat oplossen door systematisch elke
 3. **Service → Pod**: Heeft de service werkende endpoints?
 4. **End-to-end**: Werkt de complete flow?
 
-## Network Flow Debugging
-
-```mermaid
-graph LR
-    A[🌐 External Client] --> B[🚪 Ingress Controller]
-    B --> C[⚖️ Service]
-    C --> D[🎯 Pod]
-    
-    style A fill:#e1f5fe
-    style B fill:#f3e5f5
-    style C fill:#e8f5e8
-    style D fill:#fff3e0
-```
-
 ### Debugging Strategie:
 - **🔍 Identificeer** waar de flow breekt
 - **🔧 Repareer** het specifieke probleem
