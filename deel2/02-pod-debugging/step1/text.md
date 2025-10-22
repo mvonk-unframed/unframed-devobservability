@@ -69,14 +69,6 @@ kubectl create configmap pod-status-analysis \
   --from-literal=imagepull-pods=1
 ```
 
-3. **Identificeer een pod die "0/1 Ready" is** maar wel "Running" status heeft, en maak een Secret aan met de naam `ready-analysis`:
-
-```bash
-kubectl create secret generic ready-analysis \
-  --from-literal=pod-name="<naam-van-not-ready-pod>" \
-  --from-literal=reason="readiness-probe-failure"
-```
-
 ### Verificatie
 
 De verificatie controleert:

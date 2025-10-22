@@ -1,241 +1,165 @@
-# Stap 1: Service Discovery Overzicht
+# Stap 1: Extern naar Ingress Debugging
 
-## Kubernetes Service Discovery Begrijpen
+## 🌐 External Access Troubleshooting
 
-Service discovery is de manier waarop pods andere services kunnen vinden en ermee kunnen communiceren in een Kubernetes cluster.
+De eerste stap in network debugging is controleren of externe traffic de ingress controller kan bereiken. Dit is waar de meeste "website niet bereikbaar" problemen beginnen.
 
-## Bekijk Alle Services
+## Ingress Controller Status Controleren
 
-Laten we beginnen met het bekijken van alle services in de network namespace:
-
-```plain
-kubectl get services -n network
-```{{exec}}
-
-## Service Types Begrijpen
-
-Bekijk de verschillende service types:
+Controleer eerst of de ingress controller draait:
 
 ```plain
-kubectl get services -n network -o wide
+kubectl get pods -n ingress-nginx
 ```{{exec}}
 
-### Service Types:
-- **ClusterIP**: Alleen toegankelijk binnen het cluster
-- **NodePort**: Toegankelijk via node IP en specifieke port
-- **LoadBalancer**: External load balancer (cloud provider)
+Alle ingress controller pods moeten `Running` en `Ready` zijn.
 
-## DNS Service Discovery
+## Ingress Controller Service
 
-Kubernetes biedt automatische DNS resolution voor services:
+Bekijk de ingress controller service:
 
 ```plain
-kubectl exec debug-pod -n network -- nslookup frontend-service.network.svc.cluster.local
+kubectl get services -n ingress-nginx
 ```{{exec}}
 
-Test ook de korte DNS naam:
+Let op de service type en poorten. Voor externe toegang heb je meestal een `NodePort` of `LoadBalancer` service nodig.
+
+## Ingress Resources Bekijken
+
+Bekijk alle ingress resources in de network namespace:
 
 ```plain
-kubectl exec debug-pod -n network -- nslookup frontend-service
+kubectl get ingress -n network
 ```{{exec}}
 
-## Service Endpoints Bekijken
+Controleer of er ingress resources zijn en of ze een ADDRESS hebben.
 
-Services gebruiken endpoints om te weten welke pods traffic moeten ontvangen:
+## Ingress Configuratie Analyseren
+
+Bekijk de frontend ingress configuratie:
 
 ```plain
-kubectl get endpoints -n network
+kubectl describe ingress frontend-ingress -n network
 ```{{exec}}
 
-Bekijk gedetailleerde endpoint informatie:
+Let op:
+- **Host**: Welke hostname wordt verwacht?
+- **Backend**: Naar welke service wordt gerouteerd?
+- **Address**: Heeft de ingress een IP adres?
+
+## Broken Ingress Identificeren
+
+Bekijk de broken ingress:
 
 ```plain
-kubectl describe endpoints frontend-service -n network
+kubectl describe ingress broken-ingress -n network
 ```{{exec}}
 
-## Service Selectors Controleren
+Wat zie je dat anders is dan bij de werkende ingress?
 
-Bekijk hoe services pods selecteren via labels:
+## External Access Testing
+
+Test externe toegang via de ingress controller:
 
 ```plain
-kubectl describe service frontend-service -n network
+# Haal ingress controller IP op
+INGRESS_IP=$(kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.clusterIP}')
+echo "Ingress controller IP: $INGRESS_IP"
+
+# Test frontend toegang met juiste Host header
+kubectl exec debug-pod -n network -- curl -s -H "Host: frontend.local" http://$INGRESS_IP
 ```{{exec}}
 
-Vergelijk met de pod labels:
+## Host Header Importance
+
+Ingress gebruikt Host headers voor routing. Test zonder Host header:
 
 ```plain
-kubectl get pods -n network --show-labels
+kubectl exec debug-pod -n network -- curl -s http://$INGRESS_IP
 ```{{exec}}
 
-## Broken Service Analyseren
-
-Bekijk de broken service die geen endpoints heeft:
+Vergelijk met de juiste Host header:
 
 ```plain
-kubectl get endpoints broken-service -n network
+kubectl exec debug-pod -n network -- curl -s -H "Host: frontend.local" http://$INGRESS_IP
 ```{{exec}}
+
+## Ingress Controller Logs
+
+Bekijk ingress controller logs voor errors:
 
 ```plain
-kubectl describe service broken-service -n network
+kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller --tail=10
 ```{{exec}}
 
-Waarom heeft deze service geen endpoints? Bekijk de selector:
+Zoek naar errors gerelateerd aan backend services of routing.
+
+## Multiple Ingress Testing
+
+Test verschillende ingress endpoints:
 
 ```plain
-kubectl get service broken-service -n network -o yaml | grep -A 5 selector
+echo "=== Testing Frontend Ingress ==="
+kubectl exec debug-pod -n network -- curl -s -H "Host: frontend.local" http://$INGRESS_IP | head -3
+
+echo "=== Testing API Ingress ==="
+kubectl exec debug-pod -n network -- curl -s -H "Host: api.local" http://$INGRESS_IP/api | head -3
+
+echo "=== Testing Broken Ingress ==="
+kubectl exec debug-pod -n network -- curl -s -H "Host: broken.local" http://$INGRESS_IP || echo "Expected failure"
 ```{{exec}}
 
-Vergelijk met de daadwerkelijke pod labels:
+## Ingress Events
+
+Bekijk events gerelateerd aan ingress resources:
 
 ```plain
-kubectl get pods -n network -l app=broken-app --show-labels
+kubectl get events -n network --field-selector involvedObject.kind=Ingress
 ```{{exec}}
 
-## DNS Resolution Testing
+## Extern naar Ingress Checklist
 
-Test DNS resolution voor verschillende services:
+### ✅ **Ingress Controller**
+- Controller pods zijn running
+- Controller service is accessible
+- Logs tonen geen kritieke errors
 
-```plain
-kubectl exec debug-pod -n network -- nslookup backend-service.network.svc.cluster.local
-```{{exec}}
+### ✅ **Ingress Configuration**
+- Ingress resource bestaat
+- Host configuratie is correct
+- Backend service is gespecificeerd
 
-```plain
-kubectl exec debug-pod -n network -- nslookup database-service.network.svc.cluster.local
-```{{exec}}
+### ✅ **External Access**
+- Juiste Host headers worden gebruikt
+- HTTP response wordt ontvangen
+- Geen 404 of 502 errors
 
-## Service Discovery via Environment Variables
+## 🎯 Praktische Opdracht
 
-Kubernetes injecteert ook service informatie via environment variables:
+### Opdracht: Extern naar Ingress Troubleshooting
 
-```plain
-kubectl exec debug-pod -n network -- env | grep SERVICE
-```{{exec}}
+1. **Identificeer de broken ingress** die niet werkt
+2. **Test externe toegang** met verschillende Host headers
+3. **Analyseer ingress controller logs** voor errors
 
-## Cross-Namespace Service Discovery
+**Maak een Secret aan** met de naam `ingress-external-test`:
 
-Test service discovery naar andere namespaces:
-
-```plain
-kubectl exec debug-pod -n network -- nslookup kubernetes.default.svc.cluster.local
-```{{exec}}
-
-## NodePort Service Testing
-
-Bekijk de NodePort service:
-
-```plain
-kubectl get service frontend-nodeport -n network
-```{{exec}}
-
-Test toegang via NodePort (van binnen het cluster):
-
-```plain
-kubectl exec debug-pod -n network -- curl -s http://$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}'):30080
-```{{exec}}
-
-## Service Discovery Troubleshooting Checklist
-
-### 1. **Service Exists**
 ```bash
-kubectl get service <service-name> -n <namespace>
+kubectl create secret generic ingress-external-test \
+  --from-literal=working-ingress="<werkende-ingress-naam>" \
+  --from-literal=broken-ingress="<broken-ingress-naam>" \
+  --from-literal=ingress-controller-status="running/failing"
 ```
 
-### 2. **Service Has Endpoints**
-```bash
-kubectl get endpoints <service-name> -n <namespace>
-```
+### Verificatie
 
-### 3. **Selector Matches Pod Labels**
-```bash
-kubectl describe service <service-name>
-kubectl get pods --show-labels
-```
+De verificatie controleert:
+- ✅ Of je ingress controller status kunt controleren
+- ✅ Of je externe toegang kunt testen met Host headers
+- ✅ Of je broken ingress kunt identificeren
 
-### 4. **DNS Resolution Works**
-```bash
-kubectl exec <pod> -- nslookup <service-name>
-```
+**Tip**: Gebruik [`kubectl get ingress -n network`](kubectl get ingress -n network) om alle ingress resources te zien!
 
-### 5. **Pods Are Ready**
-```bash
-kubectl get pods -o wide
-```
+## Volgende Stap
 
-## Multiple Choice Vragen
-
-**Vraag 1:** Wat is de volledige DNS naam voor een service in Kubernetes?
-
-A) `<service-name>`
-B) `<service-name>.<namespace>`
-C) `<service-name>.<namespace>.svc.cluster.local`
-D) `<service-name>.cluster.local`
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: C**
-
-De volledige DNS naam is: `<service-name>.<namespace>.svc.cluster.local`
-
-Bijvoorbeeld: `frontend-service.network.svc.cluster.local`
-
-Kubernetes biedt ook korte namen binnen dezelfde namespace:
-- `frontend-service` (binnen dezelfde namespace)
-- `frontend-service.network` (cross-namespace)
-</details>
-
----
-
-**Vraag 2:** Waarom heeft een service geen endpoints?
-
-A) De service is te oud
-B) De service selector komt niet overeen met pod labels
-C) De service heeft geen ClusterIP
-D) De namespace is verkeerd
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-Een service heeft geen endpoints wanneer:
-- Service selector komt niet overeen met pod labels
-- Pods zijn niet ready (readiness probe faalt)
-- Er zijn geen pods die matchen met de selector
-
-Endpoints worden automatisch aangemaakt op basis van service selectors en pod labels.
-</details>
-
----
-
-**Vraag 3:** Wat is het verschil tussen ClusterIP en NodePort services?
-
-A) ClusterIP is sneller dan NodePort
-B) ClusterIP is alleen intern toegankelijk, NodePort ook extern
-C) NodePort kan alleen HTTP traffic verwerken
-D) Er is geen verschil
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-Service types:
-- **ClusterIP**: Alleen toegankelijk binnen het cluster (default)
-- **NodePort**: Toegankelijk via node IP en specifieke port (30000-32767)
-- **LoadBalancer**: External load balancer (cloud provider)
-
-NodePort maakt services extern toegankelijk via `<node-ip>:<node-port>`.
-</details>
-
----
-
-## Wat Zie Je?
-
-Analyseer de output en identificeer:
-1. Welke services hebben endpoints?
-2. Welke service heeft geen endpoints en waarom?
-3. Hoe werkt DNS resolution voor services?
-4. Wat is het verschil tussen ClusterIP en NodePort?
-
-Deze informatie helpt je begrijpen hoe service discovery werkt en waar problemen kunnen ontstaan.
+Als externe toegang naar ingress werkt, gaan we in de volgende stap kijken naar **Ingress → Service** routing!

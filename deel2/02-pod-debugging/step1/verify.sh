@@ -9,16 +9,9 @@ if ! kubectl get configmap pod-status-analysis -n default &> /dev/null; then
     exit 1
 fi
 
-# Controleer of ready-analysis Secret bestaat
-if ! kubectl get secret ready-analysis -n default &> /dev/null; then
-    echo "❌ Secret 'ready-analysis' niet gevonden in default namespace."
-    echo "💡 Tip: Maak een Secret aan met informatie over een not-ready pod"
-    exit 1
-fi
-
 # Haal werkelijke waarden op
 actual_running=$(kubectl get pods -n debugging --no-headers 2>/dev/null | grep -c "Running" || echo "0")
-actual_crashloop=$(kubectl get pods -n debugging --no-headers 2>/dev/null | grep -c "CrashLoopBackOff" || echo "0")
+actual_crashloop=$(kubectl get pods -n debugging --no-headers 2>/dev/null | grep -E "(CrashLoopBackOff|OOMKilled)" -c || echo "0")
 actual_imagepull=$(kubectl get pods -n debugging --no-headers 2>/dev/null | grep -c "ImagePullBackOff" || echo "0")
 
 # Haal waarden uit ConfigMap op
@@ -42,19 +35,4 @@ if [ "$config_imagepull" != "$actual_imagepull" ]; then
     exit 1
 fi
 
-# Controleer ready-analysis Secret
-pod_name=$(kubectl get secret ready-analysis -n default -o jsonpath='{.data.pod-name}' 2>/dev/null | base64 -d)
-reason=$(kubectl get secret ready-analysis -n default -o jsonpath='{.data.reason}' 2>/dev/null | base64 -d)
-
-if [ -z "$pod_name" ] || [ -z "$reason" ]; then
-    echo "❌ Secret 'ready-analysis' mist vereiste data (pod-name en reason)."
-    exit 1
-fi
-
-echo "✅ Uitstekend! Je hebt pod status analyse beheerst:"
-echo "   - Running pods: $actual_running"
-echo "   - CrashLoopBackOff pods: $actual_crashloop"
-echo "   - ImagePullBackOff pods: $actual_imagepull"
-echo "   - Identified not-ready pod: $pod_name (reason: $reason)"
-echo "✅ Je begrijpt nu pod lifecycle states en het verschil tussen READY en STATUS!"
 exit 0

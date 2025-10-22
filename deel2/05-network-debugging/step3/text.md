@@ -1,260 +1,225 @@
-# Stap 3: Pod-to-Service Connectivity
+# Stap 3: Service naar Pod Debugging
 
-## Pod-to-Service Communication Testen
+## ⚖️ Service Endpoints Analysis
 
-Nu gaan we testen hoe pods met services communiceren en veelvoorkomende connectivity problemen diagnosticeren.
+Nu services bereikbaar zijn via ingress, gaan we controleren of services correct traffic naar pods routeren. Dit is waar de meeste "service heeft geen endpoints" problemen ontstaan.
 
-## Basic Connectivity Testing
+## Service Endpoints Status
 
-Test connectivity van debug pod naar frontend service:
+Bekijk welke services endpoints hebben:
 
 ```plain
-kubectl exec debug-pod -n network -- curl -s http://frontend-service.network.svc.cluster.local
+echo "=== SERVICE ENDPOINTS OVERVIEW ==="
+kubectl get endpoints -n network
 ```{{exec}}
 
-Test met korte service naam:
+Identificeer services zonder endpoints:
 
 ```plain
-kubectl exec debug-pod -n network -- curl -s http://frontend-service
+kubectl get endpoints -n network | grep "<none>" || echo "✅ Alle services hebben endpoints"
 ```{{exec}}
 
-## Backend API Connectivity
+## Endpoints Detailed Analysis
 
-Test connectivity naar backend service op specifieke port:
+Analyseer endpoints van werkende services:
 
 ```plain
-kubectl exec debug-pod -n network -- curl -s http://backend-service.network.svc.cluster.local:8080
+echo "=== FRONTEND SERVICE ENDPOINTS ==="
+kubectl describe endpoints frontend-service -n network
+
+echo "=== BACKEND SERVICE ENDPOINTS ==="
+kubectl describe endpoints backend-service -n network
 ```{{exec}}
 
-## Database Connectivity Testing
+## Broken Service Analysis
 
-Test database connectivity (PostgreSQL):
+Analyseer waarom sommige services geen endpoints hebben:
 
 ```plain
-kubectl exec debug-pod -n network -- nc -zv database-service.network.svc.cluster.local 5432
+echo "=== BROKEN SERVICE ENDPOINTS ==="
+kubectl describe endpoints broken-service -n network || echo "Service may not exist"
+
+echo "=== FAILING READINESS SERVICE ENDPOINTS ==="
+kubectl describe endpoints failing-readiness-service -n network
 ```{{exec}}
 
-## Service Port vs Target Port
+## Service Selector vs Pod Labels
 
-Begrijp het verschil tussen service port en target port:
+Controleer of service selectors matchen met pod labels:
 
 ```plain
-echo "=== BACKEND SERVICE PORTS ==="
-kubectl get service backend-service -n network -o jsonpath='{.spec.ports}' | jq .
+echo "=== FRONTEND SERVICE SELECTOR ==="
+kubectl get service frontend-service -n network -o jsonpath='{.spec.selector}' | jq .
+
+echo "=== FRONTEND POD LABELS ==="
+kubectl get pods -n network -l app=frontend -o jsonpath='{.items[*].metadata.labels}' | jq .
 ```{{exec}}
 
-Test beide poorten:
+## Pod Readiness Status
+
+Controleer waarom pods mogelijk niet ready zijn:
 
 ```plain
-# Service port (8080)
-kubectl exec debug-pod -n network -- curl -s http://backend-service:8080
-
-# Direct pod port zou 80 zijn
-kubectl exec debug-pod -n network -- curl -s http://$(kubectl get pods -n network -l app=backend -o jsonpath='{.items[0].status.podIP}'):80
+echo "=== POD READINESS STATUS ==="
+kubectl get pods -n network -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase
 ```{{exec}}
 
-## Client Pod Testing
+## Failing Readiness Probe Analysis
 
-Gebruik de client pod voor meer realistische testing:
+Analyseer failing readiness probes:
 
 ```plain
-kubectl exec client-pod -n network -- curl -s http://frontend-service.network.svc.cluster.local
+echo "=== FAILING READINESS PROBE ANALYSIS ==="
+kubectl get pods -n network -l app=failing-readiness
+
+echo "Readiness probe configuration:"
+kubectl get pods -n network -l app=failing-readiness -o yaml | grep -A 10 "readinessProbe:" | head -15
 ```{{exec}}
 
-## Cross-Namespace Connectivity
+## Test Readiness Probe Manually
 
-Test connectivity naar services in andere namespaces:
+Test de readiness probe endpoint handmatig:
 
 ```plain
-kubectl exec debug-pod -n network -- curl -s http://kubernetes.default.svc.cluster.local
+FAILING_POD_IP=$(kubectl get pods -n network -l app=failing-readiness -o jsonpath='{.items[0].status.podIP}')
+echo "Testing readiness probe endpoint on $FAILING_POD_IP..."
+
+echo "Testing failing endpoint /nonexistent:"
+kubectl exec debug-pod -n network -- curl -s http://$FAILING_POD_IP/nonexistent || echo "❌ Probe endpoint faalt (verwacht)"
+
+echo "Testing working endpoint /:"
+kubectl exec debug-pod -n network -- curl -s http://$FAILING_POD_IP/ | head -2
 ```{{exec}}
 
-## Failing Service Connectivity
+## Fix Readiness Probe
 
-Test connectivity naar de failing-readiness service:
+Repareer de failing readiness probe:
 
 ```plain
-kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://failing-readiness-service.network.svc.cluster.local
+echo "=== FIXING READINESS PROBE ==="
+kubectl patch deployment failing-readiness -n network --type='json' -p='[
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/path",
+    "value": "/"
+  }
+]'
 ```{{exec}}
 
-Waarom faalt dit? Bekijk de service endpoints:
+Wacht tot de fix is toegepast:
 
 ```plain
+kubectl rollout status deployment/failing-readiness -n network --timeout=60s
+```{{exec}}
+
+## Validate Readiness Fix
+
+Controleer of pods nu ready zijn:
+
+```plain
+echo "=== VALIDATING READINESS FIX ==="
+kubectl get pods -n network -l app=failing-readiness
+
+echo "Service endpoints after fix:"
 kubectl get endpoints failing-readiness-service -n network
 ```{{exec}}
 
-## Network Troubleshooting Tools
+## Pod IP vs Endpoint IP Verification
 
-### 1. **DNS Resolution Testing**
-
-```plain
-kubectl exec debug-pod -n network -- nslookup frontend-service.network.svc.cluster.local
-```{{exec}}
-
-### 2. **Port Connectivity Testing**
+Vergelijk pod IPs met endpoint IPs:
 
 ```plain
-kubectl exec debug-pod -n network -- nc -zv frontend-service 80
-```{{exec}}
-
-### 3. **Trace Route (als beschikbaar)**
-
-```plain
-kubectl exec debug-pod -n network -- traceroute frontend-service.network.svc.cluster.local
-```{{exec}}
-
-### 4. **Network Interface Info**
-
-```plain
-kubectl exec debug-pod -n network -- ip addr show
-```{{exec}}
-
-## Service Load Balancing Testing
-
-Test load balancing door meerdere requests te maken:
-
-```plain
-for i in {1..5}; do
-  echo "Request $i:"
-  kubectl exec debug-pod -n network -- curl -s http://frontend-service | grep -i server || echo "No server info"
-done
-```{{exec}}
-
-## Pod-to-Pod Direct Communication
-
-Test directe pod-to-pod communicatie:
-
-```plain
-# Haal frontend pod IP op
-FRONTEND_POD_IP=$(kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].status.podIP}')
-echo "Frontend pod IP: $FRONTEND_POD_IP"
-
-# Test directe connectie
-kubectl exec debug-pod -n network -- curl -s http://$FRONTEND_POD_IP:80
-```{{exec}}
-
-## Service vs Pod IP Testing
-
-Vergelijk service IP met pod IPs:
-
-```plain
-echo "=== SERVICE IP ==="
-kubectl get service frontend-service -n network -o jsonpath='{.spec.clusterIP}'
-
-echo -e "\n=== POD IPs ==="
+echo "=== POD IP vs ENDPOINT IP ==="
+echo "Frontend pod IPs:"
 kubectl get pods -n network -l app=frontend -o jsonpath='{.items[*].status.podIP}'
+
+echo -e "\nFrontend endpoint IPs:"
+kubectl get endpoints frontend-service -n network -o jsonpath='{.subsets[*].addresses[*].ip}'
 ```{{exec}}
 
-## Connectivity Troubleshooting Scenario
+## Service Port Mapping
 
-Simuleer een connectivity probleem door een pod te labelen:
+Controleer port mapping tussen service en pods:
 
 ```plain
-# Verwijder label van een frontend pod
-FRONTEND_POD=$(kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].metadata.name}')
-kubectl label pod $FRONTEND_POD -n network app-
+echo "=== SERVICE PORT MAPPING ==="
+echo "Backend service ports:"
+kubectl get service backend-service -n network -o jsonpath='{.spec.ports}' | jq .
 
-# Test connectivity
-kubectl exec debug-pod -n network -- curl -s http://frontend-service
+echo "Backend pod ports:"
+kubectl get pods -n network -l app=backend -o jsonpath='{.items[*].spec.containers[*].ports}' | jq .
 ```{{exec}}
 
-Bekijk wat er gebeurd is met endpoints:
+## Direct Pod Connectivity Testing
+
+Test directe pod connectivity:
 
 ```plain
-kubectl get endpoints frontend-service -n network
+echo "=== DIRECT POD CONNECTIVITY ==="
+FRONTEND_POD_IP=$(kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].status.podIP}')
+echo "Testing direct access to frontend pod $FRONTEND_POD_IP:"
+kubectl exec debug-pod -n network -- curl -s http://$FRONTEND_POD_IP | head -2
+
+BACKEND_POD_IP=$(kubectl get pods -n network -l app=backend -o jsonpath='{.items[0].status.podIP}')
+echo "Testing direct access to backend pod $BACKEND_POD_IP:"
+kubectl exec debug-pod -n network -- curl -s http://$BACKEND_POD_IP | head -2
 ```{{exec}}
 
-Herstel het label:
+## Service naar Pod Checklist
+
+### ✅ **Service Has Endpoints**
+- Service selector matcht pod labels
+- Pods zijn running en ready
+- Readiness probes slagen
+
+### ✅ **Port Configuration**
+- Service port is correct geconfigureerd
+- Target port matcht pod container port
+- Protocol is consistent
+
+### ✅ **Pod Health**
+- Pods zijn in Running status
+- Readiness probes zijn correct geconfigureerd
+- Pods hebben juiste labels
+
+## Load Balancing Verification
+
+Test load balancing tussen meerdere pods:
 
 ```plain
-kubectl label pod $FRONTEND_POD -n network app=frontend
-```{{exec}}
-
-## Network Policy Impact (als aanwezig)
-
-Controleer of er network policies zijn die connectivity beïnvloeden:
-
-```plain
-kubectl get networkpolicies -n network
-```{{exec}}
-
-## Service Mesh Connectivity (als aanwezig)
-
-Als er een service mesh is, controleer sidecar status:
-
-```plain
-kubectl get pods -n network -o jsonpath='{.items[*].spec.containers[*].name}' | grep -o istio-proxy || echo "Geen Istio sidecars gevonden"
-```{{exec}}
-
-## Connectivity Debugging Checklist
-
-### 1. **DNS Resolution**
-```bash
-kubectl exec <pod> -- nslookup <service>
-```
-
-### 2. **Port Connectivity**
-```bash
-kubectl exec <pod> -- nc -zv <service> <port>
-```
-
-### 3. **Service Endpoints**
-```bash
-kubectl get endpoints <service>
-```
-
-### 4. **Pod Readiness**
-```bash
-kubectl get pods -o wide
-```
-
-### 5. **Network Policies**
-```bash
-kubectl get networkpolicies
-```
-
-## Performance Testing
-
-Test response times:
-
-```plain
-kubectl exec debug-pod -n network -- time curl -s http://frontend-service >/dev/null
-```{{exec}}
-
-## Multiple Service Testing
-
-Test connectivity naar alle services:
-
-```plain
-SERVICES=$(kubectl get services -n network -o jsonpath='{.items[*].metadata.name}')
-for service in $SERVICES; do
-  echo "Testing $service..."
-  kubectl exec debug-pod -n network -- curl -s --connect-timeout 3 http://$service || echo "Failed to connect to $service"
+echo "=== LOAD BALANCING TEST ==="
+for i in {1..3}; do
+  echo "Request $i to frontend service:"
+  kubectl exec debug-pod -n network -- curl -s http://frontend-service | grep -i "welcome\|nginx" | head -1
 done
 ```{{exec}}
 
 ## 🎯 Praktische Opdracht
 
-### Opdracht: Connectivity Troubleshooting
+### Opdracht: Service naar Pod Troubleshooting
 
-Je gaat nu pod-to-service connectivity problemen diagnosticeren en oplossen.
+1. **Identificeer services zonder endpoints** en analyseer waarom
+2. **Repareer readiness probe problemen** die endpoints blokkeren
+3. **Valideer dat services correct naar pods routeren**
 
-1. **Test DNS resolution** voor alle services
-2. **Test port connectivity** met netcat
-3. **Identificeer een connectivity probleem** en los het op
-
-**Maak een Secret aan** met de naam `connectivity-test`:
+**Maak een Secret aan** met de naam `service-pod-test`:
 
 ```bash
-kubectl create secret generic connectivity-test \
-  --from-literal=dns-working="<service-met-werkende-dns>" \
-  --from-literal=port-working="<service-met-werkende-port>" \
-  --from-literal=connectivity-issue="<probleem-dat-je-hebt-gevonden>"
+kubectl create secret generic service-pod-test \
+  --from-literal=service-without-endpoints="<service-zonder-endpoints>" \
+  --from-literal=readiness-issue="<readiness-probe-probleem>" \
+  --from-literal=fix-applied="<wat-je-hebt-gerepareerd>"
 ```
 
 ### Verificatie
 
 De verificatie controleert:
-- ✅ Of je DNS resolution kunt testen
-- ✅ Of je port connectivity kunt valideren
-- ✅ Of je connectivity problemen kunt identificeren en oplossen
+- ✅ Of je services zonder endpoints kunt identificeren
+- ✅ Of je readiness probe problemen kunt diagnosticeren en repareren
+- ✅ Of je service naar pod routing kunt valideren
+
+**Tip**: Gebruik [`kubectl get endpoints -n network`](kubectl get endpoints -n network) om services zonder endpoints te vinden!
+
+## Volgende Stap
+
+Als services correct naar pods routeren, gaan we in de volgende stap de **complete end-to-end flow** testen!

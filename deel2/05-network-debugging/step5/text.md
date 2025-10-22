@@ -1,130 +1,122 @@
-# Stap 5: Network Troubleshooting Scenario
+# Stap 5: Praktische Network Debugging Scenario
 
-## Praktische Network Debugging Oefening
+## 🚨 Incident Response: "Website Down!"
 
-Nu ga je alle geleerde technieken toepassen op een complete network troubleshooting scenario. Er is een probleem gemeld: "De website is niet bereikbaar en de API geeft errors!"
+Je krijgt een urgent ticket: **"De website is niet bereikbaar en klanten kunnen niet inloggen!"**
 
-## Scenario: Complete Network Outage
+Dit is een realistische network debugging scenario waarbij je systematisch de **Extern → Ingress → Service → Pod** flow gaat troubleshooten.
 
-### Stap 1: Initial Assessment
+## Incident Assessment
 
-Bekijk de overall status van alle network resources:
+Start met een snelle assessment van de situatie:
 
 ```plain
+echo "=== INCIDENT ASSESSMENT ==="
+echo "Timestamp: $(date)"
+echo "Issue: Website not accessible"
+
+echo "1. Overall cluster status:"
+kubectl get nodes
+
+echo "2. Network namespace status:"
 kubectl get all -n network
-```{{exec}}
 
-```plain
+echo "3. Ingress status:"
 kubectl get ingress -n network
 ```{{exec}}
 
-### Stap 2: Service Discovery Check
+## Systematic Debugging: Extern → Ingress
 
-Test of services bereikbaar zijn via DNS:
-
-```plain
-echo "=== DNS RESOLUTION TEST ==="
-for service in frontend-service backend-service database-service; do
-  echo "Testing $service..."
-  kubectl exec debug-pod -n network -- nslookup $service.network.svc.cluster.local
-done
-```{{exec}}
-
-### Stap 3: Service Endpoint Validation
-
-Controleer welke services endpoints hebben:
+**Stap 1: Controleer externe toegang naar ingress**
 
 ```plain
-echo "=== SERVICE ENDPOINTS STATUS ==="
-kubectl get endpoints -n network
-```{{exec}}
+echo "=== STEP 1: EXTERNAL → INGRESS ==="
 
-Identificeer services zonder endpoints:
+echo "Ingress controller status:"
+kubectl get pods -n ingress-nginx
 
-```plain
-kubectl get endpoints -n network | grep "<none>" || echo "Alle services hebben endpoints"
-```{{exec}}
+echo "Ingress controller service:"
+kubectl get service ingress-nginx-controller -n ingress-nginx
 
-### Stap 4: Pod Readiness Analysis
-
-Analyseer waarom pods mogelijk niet ready zijn:
-
-```plain
-echo "=== POD READINESS STATUS ==="
-kubectl get pods -n network -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase
-```{{exec}}
-
-Bekijk failing readiness pods in detail:
-
-```plain
-kubectl describe pod -n network -l app=failing-readiness | grep -A 15 "Conditions:"
-```{{exec}}
-
-### Stap 5: Connectivity Flow Testing
-
-Test de complete connectivity flow: Client → Ingress → Service → Pod
-
-```plain
-echo "=== COMPLETE CONNECTIVITY FLOW TEST ==="
-
-# 1. Test ingress controller
 INGRESS_IP=$(kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.clusterIP}')
 echo "Ingress IP: $INGRESS_IP"
 
-# 2. Test frontend via ingress
-echo "Testing frontend via ingress..."
-kubectl exec debug-pod -n network -- curl -s -H "Host: frontend.local" http://$INGRESS_IP | head -5
-
-# 3. Test API via ingress
-echo "Testing API via ingress..."
-kubectl exec debug-pod -n network -- curl -s -H "Host: api.local" http://$INGRESS_IP/api | head -5
-
-# 4. Test direct service connectivity
-echo "Testing direct service connectivity..."
-kubectl exec debug-pod -n network -- curl -s http://frontend-service | head -5
+echo "Testing external access to ingress:"
+kubectl exec debug-pod -n network -- curl -s -H "Host: frontend.local" http://$INGRESS_IP | head -2 || echo "❌ External access failed"
 ```{{exec}}
 
-### Stap 6: Database Connectivity Deep Dive
+## Systematic Debugging: Ingress → Service
 
-Test database connectivity en troubleshoot eventuele problemen:
+**Stap 2: Controleer ingress naar service routing**
 
 ```plain
-echo "=== DATABASE CONNECTIVITY TEST ==="
+echo "=== STEP 2: INGRESS → SERVICE ==="
 
-# Test port connectivity
-kubectl exec debug-pod -n network -- nc -zv database-service 5432
+echo "Frontend ingress backend configuration:"
+kubectl get ingress frontend-ingress -n network -o jsonpath='{.spec.rules[0].http.paths[0].backend}' | jq .
 
-# Test database readiness
-kubectl get pods -n network -l app=database
+echo "Backend service exists?"
+kubectl get service frontend-service -n network || echo "❌ Service missing"
 
-# Check database logs
-kubectl logs -n network -l app=database --tail=10
+echo "Testing ingress to service routing:"
+kubectl exec debug-pod -n network -- curl -s -H "Host: frontend.local" http://$INGRESS_IP | head -2
 ```{{exec}}
 
-### Stap 7: Readiness Probe Troubleshooting
+## Systematic Debugging: Service → Pod
 
-Analyseer en los readiness probe problemen op:
+**Stap 3: Controleer service naar pod connectivity**
 
 ```plain
-echo "=== READINESS PROBE ANALYSIS ==="
+echo "=== STEP 3: SERVICE → POD ==="
 
-# Bekijk failing readiness probe configuratie
-kubectl get pods -n network -l app=failing-readiness -o yaml | grep -A 10 "readinessProbe:"
+echo "Service endpoints:"
+kubectl get endpoints frontend-service -n network
 
-# Test de probe endpoint handmatig
-FAILING_POD_IP=$(kubectl get pods -n network -l app=failing-readiness -o jsonpath='{.items[0].status.podIP}')
-echo "Testing readiness probe endpoint on $FAILING_POD_IP..."
-kubectl exec debug-pod -n network -- curl -s http://$FAILING_POD_IP/nonexistent || echo "Probe endpoint faalt (verwacht)"
+echo "Pod status:"
+kubectl get pods -n network -l app=frontend
 
-# Test werkende endpoint
-kubectl exec debug-pod -n network -- curl -s http://$FAILING_POD_IP/ | head -3
+echo "Testing direct service access:"
+kubectl exec debug-pod -n network -- curl -s http://frontend-service | head -2
+
+echo "Testing direct pod access:"
+POD_IP=$(kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].status.podIP}')
+kubectl exec debug-pod -n network -- curl -s http://$POD_IP | head -2
 ```{{exec}}
 
-### Stap 8: Fix Readiness Probe
+## Root Cause Analysis
 
-Repareer de failing readiness probe:
+**Identificeer en repareer problemen:**
 
 ```plain
+echo "=== ROOT CAUSE ANALYSIS ==="
+
+echo "Checking for services without endpoints:"
+kubectl get endpoints -n network | grep "<none>" && echo "❌ Found services without endpoints" || echo "✅ All services have endpoints"
+
+echo "Checking for failing readiness probes:"
+kubectl get pods -n network | grep "0/" && echo "❌ Found pods not ready" || echo "✅ All pods ready"
+
+echo "Checking ingress backend issues:"
+kubectl describe ingress broken-ingress -n network | grep -i error || echo "✅ No obvious ingress errors"
+```{{exec}}
+
+## Fix Implementation
+
+**Repareer geïdentificeerde problemen:**
+
+```plain
+echo "=== IMPLEMENTING FIXES ==="
+
+echo "Fix 1: Repair broken ingress backend"
+kubectl patch ingress broken-ingress -n network --type='json' -p='[
+  {
+    "op": "replace",
+    "path": "/spec/rules/0/http/paths/0/backend/service/name",
+    "value": "frontend-service"
+  }
+]'
+
+echo "Fix 2: Repair failing readiness probe"
 kubectl patch deployment failing-readiness -n network --type='json' -p='[
   {
     "op": "replace",
@@ -132,239 +124,135 @@ kubectl patch deployment failing-readiness -n network --type='json' -p='[
     "value": "/"
   }
 ]'
-```{{exec}}
 
-Wacht tot de fix is toegepast:
-
-```plain
+echo "Waiting for fixes to apply..."
 kubectl rollout status deployment/failing-readiness -n network --timeout=60s
 ```{{exec}}
 
-Controleer of pods nu ready zijn:
+## Post-Fix Validation
+
+**Valideer dat alle fixes werken:**
 
 ```plain
-kubectl get pods -n network -l app=failing-readiness
-```{{exec}}
+echo "=== POST-FIX VALIDATION ==="
 
-### Stap 9: End-to-End Connectivity Validation
-
-Test de complete applicatie stack na fixes:
-
-```plain
-echo "=== END-TO-END CONNECTIVITY VALIDATION ==="
-
-# Test alle ingress endpoints
+echo "Testing complete flow after fixes:"
 for host in frontend.local api.local broken.local; do
-  echo "Testing $host..."
-  kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 -H "Host: $host" http://$INGRESS_IP | head -2
+  echo "Testing $host:"
+  kubectl exec debug-pod -n network -- curl -s -H "Host: $host" http://$INGRESS_IP | head -1
 done
+
+echo "Checking all services have endpoints:"
+kubectl get endpoints -n network
+
+echo "Checking all pods are ready:"
+kubectl get pods -n network
 ```{{exec}}
 
-### Stap 10: Performance en Load Testing
+## Load Testing & Performance
 
-Test load balancing en performance:
+**Test dat de applicatie onder load werkt:**
 
 ```plain
-echo "=== LOAD BALANCING TEST ==="
+echo "=== LOAD TESTING ==="
 
-# Test meerdere requests naar frontend
+echo "Testing load balancing:"
 for i in {1..5}; do
-  echo "Request $i to frontend:"
+  echo "Request $i:"
   kubectl exec debug-pod -n network -- curl -s -H "Host: frontend.local" http://$INGRESS_IP | grep -i "welcome\|nginx" | head -1
 done
 
-# Test backend load balancing
-for i in {1..3}; do
-  echo "Request $i to backend:"
-  kubectl exec debug-pod -n network -- curl -s -H "Host: api.local" http://$INGRESS_IP/api | head -1
-done
+echo "Testing response times:"
+kubectl exec debug-pod -n network -- time curl -s -H "Host: frontend.local" http://$INGRESS_IP >/dev/null
 ```{{exec}}
 
-### Stap 11: Network Monitoring
+## Incident Resolution Report
 
-Monitor network events en logs:
-
-```plain
-echo "=== NETWORK MONITORING ==="
-
-# Recent network events
-kubectl get events -n network --sort-by=.metadata.creationTimestamp --tail=10
-
-# Ingress controller logs
-kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller --tail=5
-```{{exec}}
-
-### Stap 12: Complete Health Check
-
-Voer een complete health check uit van alle network components:
+**Genereer een incident report:**
 
 ```plain
-echo "=== COMPLETE NETWORK HEALTH CHECK ==="
+echo "=== INCIDENT RESOLUTION REPORT ==="
 
-echo "1. Namespace status:"
-kubectl get namespace network
+echo "Incident: Website not accessible"
+echo "Root Causes Found:"
+echo "1. Broken ingress pointing to non-existent service"
+echo "2. Failing readiness probes preventing pod endpoints"
 
-echo "2. Pod status:"
-kubectl get pods -n network
+echo "Fixes Applied:"
+echo "1. Updated broken-ingress backend to point to frontend-service"
+echo "2. Fixed readiness probe path from /nonexistent to /"
 
-echo "3. Service status:"
-kubectl get services -n network
-
-echo "4. Endpoint status:"
-kubectl get endpoints -n network
-
-echo "5. Ingress status:"
-kubectl get ingress -n network
-
-echo "6. Ingress controller status:"
-kubectl get pods -n ingress-nginx
-
-echo "=== HEALTH CHECK SUMMARY ==="
+echo "Current Status:"
 TOTAL_PODS=$(kubectl get pods -n network --no-headers | wc -l)
-RUNNING_PODS=$(kubectl get pods -n network --no-headers | grep "Running" | wc -l)
 READY_PODS=$(kubectl get pods -n network --no-headers | grep "1/1\|2/2" | wc -l)
+INGRESS_COUNT=$(kubectl get ingress -n network --no-headers | wc -l)
 
-echo "Total pods: $TOTAL_PODS"
-echo "Running pods: $RUNNING_PODS"
-echo "Ready pods: $READY_PODS"
+echo "- Total pods: $TOTAL_PODS"
+echo "- Ready pods: $READY_PODS"
+echo "- Ingress resources: $INGRESS_COUNT"
 
-if [ "$RUNNING_PODS" -eq "$TOTAL_PODS" ] && [ "$READY_PODS" -gt 0 ]; then
-  echo "✅ Network health check PASSED"
+if [ "$READY_PODS" -eq "$TOTAL_PODS" ]; then
+  echo "✅ INCIDENT RESOLVED - All systems operational"
 else
-  echo "⚠️ Some network issues detected"
+  echo "⚠️ PARTIAL RESOLUTION - Some issues remain"
 fi
 ```{{exec}}
 
-## Network Debugging Mastery Checklist
+## Network Debugging Mastery
 
-### ✅ **Service Discovery**
-- DNS resolution werkt voor alle services
-- Service selectors matchen pod labels
-- Endpoints worden correct gegenereerd
+### 🎯 **Systematic Approach**
+1. **Assess** overall situation quickly
+2. **Follow the flow** systematically: Extern → Ingress → Service → Pod
+3. **Identify** root causes, not just symptoms
+4. **Fix** configuration issues
+5. **Validate** end-to-end functionality
+6. **Document** findings and fixes
 
-### ✅ **Connectivity**
-- Pod-to-service communication werkt
-- Cross-namespace connectivity werkt
-- Direct pod-to-pod communication werkt
+### 🔧 **Key Debugging Commands**
+```bash
+# Quick assessment
+kubectl get all -n <namespace>
+kubectl get ingress -n <namespace>
 
-### ✅ **Load Balancing**
-- Services distribueren traffic correct
-- Ingress routeert naar juiste backends
-- NodePort services zijn toegankelijk
+# Flow testing
+curl -H "Host: <hostname>" http://<ingress-ip>
+kubectl exec <pod> -- curl http://<service>
 
-### ✅ **Health Checks**
-- Readiness probes zijn correct geconfigureerd
-- Liveness probes voorkomen zombie pods
-- Health check endpoints zijn bereikbaar
+# Root cause analysis
+kubectl get endpoints <service>
+kubectl describe pod <pod>
+kubectl logs <pod>
+```
 
-### ✅ **External Access**
-- Ingress controller is operationeel
-- Host-based routing werkt
-- Path-based routing werkt
-- TLS termination werkt (indien geconfigureerd)
+## 🎯 Praktische Opdracht
 
-## Multiple Choice Vragen
+### Opdracht: Complete Incident Response
 
-**Vraag 1:** Wat is de eerste stap bij network troubleshooting?
+Je hebt nu een complete incident response doorlopen. Documenteer je bevindingen:
 
-A) Pods herstarten
-B) Services verwijderen en opnieuw aanmaken
-C) Overall status van alle network resources bekijken
-D) Ingress controller logs bekijken
+**Maak een Secret aan** met de naam `incident-report`:
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+```bash
+kubectl create secret generic incident-report \
+  --from-literal=root-cause-1="<eerste-probleem-gevonden>" \
+  --from-literal=root-cause-2="<tweede-probleem-gevonden>" \
+  --from-literal=resolution-status="resolved/partial/unresolved"
+```
 
-**Correct antwoord: C**
+### Verificatie
 
-De troubleshooting workflow begint met:
-1. **Overall assessment**: `kubectl get all -n <namespace>`
-2. **Identify failing components**: Welke resources hebben problemen?
-3. **Analyze systematically**: Service → Endpoints → Pods → Probes
+De verificatie controleert:
+- ✅ Of je systematisch de network flow kunt debuggen
+- ✅ Of je root causes kunt identificeren en repareren
+- ✅ Of je end-to-end connectivity kunt valideren
 
-Een breed overzicht geeft je context voordat je diep duikt in specifieke componenten.
-</details>
+## 🏆 Gefeliciteerd!
 
----
+Je hebt succesvol een complete network debugging scenario doorlopen! Je kunt nu:
 
-**Vraag 2:** In welke volgorde debug je network connectivity problemen?
+- **Systematisch** network problemen debuggen
+- **De flow volgen** van extern naar pod
+- **Root causes identificeren** en repareren
+- **End-to-end connectivity** valideren
 
-A) Pods → Services → Ingress → DNS
-B) DNS → Service → Endpoints → Pods → Probes
-C) Ingress → DNS → Pods → Services
-D) Random, de volgorde maakt niet uit
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-De systematische debugging volgorde:
-1. **DNS resolution**: Kunnen services gevonden worden?
-2. **Service configuration**: Bestaat de service?
-3. **Endpoints**: Heeft de service endpoints?
-4. **Pods**: Zijn pods running en ready?
-5. **Probes**: Falen readiness/liveness probes?
-
-Deze volgorde volgt de network flow van client naar pod.
-</details>
-
----
-
-**Vraag 3:** Wat is de meest effectieve manier om een failing readiness probe te repareren?
-
-A) De pod herstarten
-B) De readiness probe uitschakelen
-C) Het probe endpoint corrigeren naar een werkende URL
-D) De probe timeout verhogen
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: C**
-
-Voor failing readiness probes:
-1. **Identificeer het probleem**: Welk endpoint faalt?
-2. **Test handmatig**: `curl http://<pod-ip>/<probe-path>`
-3. **Corrigeer de configuratie**: Update naar werkende endpoint
-4. **Verify**: Controleer dat pods ready worden
-
-Readiness probes zijn cruciaal voor service endpoints - fix de root cause, niet de symptomen.
-</details>
-
----
-
-**Vraag 4:** Hoe valideer je end-to-end connectivity na fixes?
-
-A) Alleen pod status controleren
-B) Test de complete flow: Client → Ingress → Service → Pod
-C) Alleen service endpoints controleren
-D) Alleen DNS resolution testen
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-End-to-end validatie vereist testing van de complete flow:
-1. **External access**: Test via ingress met Host headers
-2. **Service connectivity**: Test direct service toegang
-3. **Pod connectivity**: Test direct pod toegang
-4. **Load balancing**: Verify traffic distributie
-5. **Health checks**: Confirm alle components healthy
-
-Dit zorgt ervoor dat de hele applicatie stack werkt, niet alleen individuele componenten.
-</details>
-
----
-
-## Troubleshooting Workflow Samenvatting
-
-1. **🔍 Identify**: Welke component faalt?
-2. **📋 Analyze**: Service → Endpoints → Pods → Probes
-3. **🔗 Test**: DNS → Service → Pod connectivity
-4. **🌐 Validate**: Ingress → Service → Pod flow
-5. **🔧 Fix**: Repareer configuratie issues
-6. **✅ Verify**: End-to-end connectivity test
-
-**Gefeliciteerd! Je hebt een complete network troubleshooting scenario succesvol doorlopen!**
+Deze vaardigheden zijn essentieel voor elke DevOps engineer die met Kubernetes werkt!
