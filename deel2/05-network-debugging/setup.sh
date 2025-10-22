@@ -274,10 +274,6 @@ spec:
     command: ["sleep", "3600"]
 EOF
 
-# Installeer ingress controller (nginx)
-echo "Installeren van NGINX Ingress Controller..."
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
-
 # 9. Werkende ingress
 cat <<EOF | kubectl apply -f -
 apiVersion: networking.k8s.io/v1
@@ -349,3 +345,7 @@ spec:
             port:
               number: 8080
 EOF
+
+# Installeer ingress controller (nginx)
+echo "Installeren van NGINX Ingress Controller..."
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
