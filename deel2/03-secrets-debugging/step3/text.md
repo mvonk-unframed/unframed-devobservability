@@ -125,4 +125,74 @@ kubectl get secret api-keys -n secrets -o jsonpath='{.data.stripe-key}' | base64
 kubectl get secret webapp-tls -n secrets -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -dates -noout
 ```
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Waarom zijn Kubernetes secrets base64 encoded?
+
+A) Voor encryptie en security
+B) Voor obfuscation, niet voor echte security
+C) Om de grootte te verkleinen
+D) Voor betere performance
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Base64 encoding in Kubernetes secrets is voor **obfuscation**, NIET voor echte security:
+- Het voorkomt dat secrets per ongeluk zichtbaar zijn in logs
+- Het is gemakkelijk te decoderen met `base64 -d`
+- Voor echte encryptie heb je tools zoals SOPS nodig
+- Het is geen vervanging voor proper secret management
+</details>
+
+---
+
+**Vraag 2:** Welk commando decodeert een specifieke key uit een secret?
+
+A) `kubectl get secret <name> -o yaml | base64 -d`
+B) `kubectl get secret <name> -o jsonpath='{.data.<key>}' | base64 -d`
+C) `kubectl decode secret <name> <key>`
+D) `kubectl get secret <name> --decode <key>`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Het correcte commando is:
+`kubectl get secret <name> -o jsonpath='{.data.<key>}' | base64 -d`
+
+Bijvoorbeeld:
+`kubectl get secret database-credentials -o jsonpath='{.data.username}' | base64 -d`
+
+De andere opties bestaan niet in kubectl.
+</details>
+
+---
+
+**Vraag 3:** Wat is een belangrijke security overweging bij het decoderen van secrets?
+
+A) Het is altijd veilig om secrets te decoderen
+B) Alleen decoderen voor debugging, nooit in productie logs
+C) Base64 decoding is niet mogelijk
+D) Secrets kunnen niet gedecodeerd worden
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Belangrijke security overwegingen:
+- **Alleen decoderen voor debugging doeleinden**
+- **Nooit secret waarden loggen in productie**
+- **Deel nooit gedecodeerde secrets**
+- **Gebruik geen echo in productie scripts**
+- **Roteer secrets regelmatig**
+
+Base64 is gemakkelijk te decoderen, dus behandel gedecodeerde waarden als zeer gevoelig.
+</details>
+
+---
+
 Nu kun je secret waarden decoderen voor effectieve debugging!

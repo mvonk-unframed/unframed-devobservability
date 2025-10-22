@@ -155,6 +155,97 @@ Om de broken webapp te fixen, zou je de deployment moeten updaten om de juiste s
 kubectl patch deployment broken-webapp -n secrets -p '{"spec":{"template":{"spec":{"containers":[{"name":"webapp","env":[{"name":"DB_USERNAME","valueFrom":{"secretKeyRef":{"name":"database-credentials","key":"username"}}},{"name":"DB_PASSWORD","valueFrom":{"secretKeyRef":{"name":"database-credentials","key":"password"}}},{"name":"DB_HOST","valueFrom":{"secretKeyRef":{"name":"database-credentials","key":"host"}}}]}]}}}}'
 ```{{exec}}
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Een webapp kan niet verbinden met de database. Wat is de eerste stap in je debugging proces?
+
+A) De database server herstarten
+B) Controleren of de database credentials correct zijn
+C) De pod status en events bekijken
+D) De secret opnieuw aanmaken
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+De debugging workflow begint altijd met:
+1. **Pod status controleren** - draait de pod?
+2. **Events bekijken** - zijn er error messages?
+3. **Dan pas** credentials, connectivity, etc. controleren
+
+Events vertellen je vaak direct wat er mis is, wat tijd bespaart.
+</details>
+
+---
+
+**Vraag 2:** Je ziet dat een API key begint met "sk_live_" maar de applicatie verwacht een test key. Wat is het probleem?
+
+A) De key is te kort
+B) Er wordt een production key gebruikt in plaats van een test key
+C) De key is expired
+D) De key heeft het verkeerde formaat
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Stripe API key prefixes:
+- **sk_test_**: Test/development keys
+- **sk_live_**: Production keys
+
+Als de applicatie een test key verwacht maar een live key krijgt, kan dit authentication problemen veroorzaken of ongewenste charges in productie.
+</details>
+
+---
+
+**Vraag 3:** Een TLS certificate is verlopen. Welk commando toont de expiration date?
+
+A) `kubectl get secret <name> --show-expiry`
+B) `kubectl describe secret <name> | grep expiry`
+C) `kubectl get secret <name> -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -dates -noout`
+D) `kubectl get secret <name> --check-validity`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+Het correcte commando is:
+`kubectl get secret <name> -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -dates -noout`
+
+Dit:
+1. Haalt het certificate op uit de secret
+2. Decodeert de base64 encoding
+3. Gebruikt openssl om de validity dates te tonen
+
+De andere opties bestaan niet in kubectl.
+</details>
+
+---
+
+**Vraag 4:** Wat is de beste manier om een broken deployment te fixen die de verkeerde secret gebruikt?
+
+A) De secret hernoemen naar de naam die de deployment verwacht
+B) De deployment patchen om naar de juiste secret te verwijzen
+C) Een nieuwe pod handmatig aanmaken
+D) De hele namespace verwijderen en opnieuw aanmaken
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+De beste aanpak is de deployment patchen:
+- Gebruik `kubectl patch deployment` of `kubectl edit deployment`
+- Update de secret references naar de juiste secret
+- Kubernetes zal automatisch nieuwe pods uitrollen
+- Dit is veiliger dan secrets hernoemen (kan andere apps breken)
+</details>
+
+---
+
 **Wat heb je geleerd?**
 
 Identificeer nu de problemen die je hebt gevonden en begrijp hoe je ze zou kunnen oplossen!

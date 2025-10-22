@@ -161,6 +161,75 @@ kubectl exec <pod> -- nslookup <service-name>
 kubectl get pods -o wide
 ```
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Wat is de volledige DNS naam voor een service in Kubernetes?
+
+A) `<service-name>`
+B) `<service-name>.<namespace>`
+C) `<service-name>.<namespace>.svc.cluster.local`
+D) `<service-name>.cluster.local`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+De volledige DNS naam is: `<service-name>.<namespace>.svc.cluster.local`
+
+Bijvoorbeeld: `frontend-service.network.svc.cluster.local`
+
+Kubernetes biedt ook korte namen binnen dezelfde namespace:
+- `frontend-service` (binnen dezelfde namespace)
+- `frontend-service.network` (cross-namespace)
+</details>
+
+---
+
+**Vraag 2:** Waarom heeft een service geen endpoints?
+
+A) De service is te oud
+B) De service selector komt niet overeen met pod labels
+C) De service heeft geen ClusterIP
+D) De namespace is verkeerd
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Een service heeft geen endpoints wanneer:
+- Service selector komt niet overeen met pod labels
+- Pods zijn niet ready (readiness probe faalt)
+- Er zijn geen pods die matchen met de selector
+
+Endpoints worden automatisch aangemaakt op basis van service selectors en pod labels.
+</details>
+
+---
+
+**Vraag 3:** Wat is het verschil tussen ClusterIP en NodePort services?
+
+A) ClusterIP is sneller dan NodePort
+B) ClusterIP is alleen intern toegankelijk, NodePort ook extern
+C) NodePort kan alleen HTTP traffic verwerken
+D) Er is geen verschil
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Service types:
+- **ClusterIP**: Alleen toegankelijk binnen het cluster (default)
+- **NodePort**: Toegankelijk via node IP en specifieke port (30000-32767)
+- **LoadBalancer**: External load balancer (cloud provider)
+
+NodePort maakt services extern toegankelijk via `<node-ip>:<node-port>`.
+</details>
+
+---
+
 ## Wat Zie Je?
 
 Analyseer de output en identificeer:

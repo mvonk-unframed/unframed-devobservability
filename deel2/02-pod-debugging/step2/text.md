@@ -69,6 +69,73 @@ Let op de volgende signalen:
 - **Requests**: Gegarandeerde resources
 - **Limits**: Maximum toegestane resources
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Wat betekent "1000m" in CPU metrics?
+
+A) 1000 megabytes
+B) 1 CPU core
+C) 1000 milliseconden
+D) 1000 memory units
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+CPU wordt gemeten in millicores (m):
+- 1000m = 1 CPU core
+- 500m = 0.5 CPU core
+- 100m = 0.1 CPU core
+
+Dit is een standaard manier om CPU resources te specificeren in Kubernetes.
+</details>
+
+---
+
+**Vraag 2:** Wat is het verschil tussen resource "requests" en "limits"?
+
+A) Requests zijn maximaal, limits zijn minimaal
+B) Requests zijn gegarandeerde resources, limits zijn maximum toegestaan
+C) Ze betekenen hetzelfde
+D) Requests zijn voor CPU, limits zijn voor memory
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+- **Requests**: Gegarandeerde resources die de pod krijgt (gebruikt voor scheduling)
+- **Limits**: Maximum resources dat de pod mag gebruiken
+
+Als een pod zijn CPU limit overschrijdt wordt het "throttled". Als het zijn memory limit overschrijdt wordt het "OOMKilled".
+</details>
+
+---
+
+**Vraag 3:** Welk commando toont pods gesorteerd op memory verbruik?
+
+A) `kubectl top pods --sort-by=memory`
+B) `kubectl get pods --sort-by=memory`
+C) `kubectl top pods --order-by=memory`
+D) `kubectl describe pods --sort-memory`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: A**
+
+`kubectl top pods --sort-by=memory` sorteert pods op memory verbruik van laag naar hoog.
+
+Je kunt ook sorteren op:
+- `--sort-by=cpu` voor CPU verbruik
+- `--sort-by=name` voor pod naam
+
+Let op: `kubectl top` vereist dat metrics-server draait in het cluster.
+</details>
+
+---
+
 ## Praktische Analyse
 
 Analyseer de output en identificeer:

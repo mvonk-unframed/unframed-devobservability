@@ -175,6 +175,79 @@ sops -d secret.yaml | kubectl apply -f - --namespace=staging
 3. **Audit Trail**: Git toont wie wat heeft gewijzigd
 4. **Key Validation**: SOPS valideert encryption keys bij bewerking
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Wat gebeurt er wanneer je `sops file.yaml` uitvoert?
+
+A) Het bestand wordt gedecodeerd en getoond
+B) Het bestand wordt gedecodeerd, geopend in een editor, en automatisch re-encrypted bij opslaan
+C) Het bestand wordt permanent gedecodeerd
+D) Er wordt een backup gemaakt
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+`sops file.yaml` (zonder -d flag):
+- Decrypteert het bestand tijdelijk
+- Opent het in een editor (nano, vim, etc.)
+- Re-encrypteert automatisch bij opslaan
+- Het bestand blijft altijd encrypted op disk
+
+Dit is de veilige manier om encrypted secrets te bewerken.
+</details>
+
+---
+
+**Vraag 2:** Hoe wijzig je een specifieke waarde via de command line?
+
+A) `sops --edit key=value file.yaml`
+B) `sops --set '["data"]["key"]' "value" file.yaml`
+C) `sops --update key value file.yaml`
+D) `sops --change key=value file.yaml`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Het correcte commando is:
+`sops --set '["data"]["key"]' "value" file.yaml`
+
+- Gebruikt JSONPath syntax voor de key locatie
+- Handig voor scripting en automation
+- Wijzigt alleen de gespecificeerde waarde
+- Re-encrypteert automatisch
+
+De andere opties bestaan niet in SOPS.
+</details>
+
+---
+
+**Vraag 3:** Wat is een belangrijk voordeel van SOPS editing?
+
+A) Het is sneller dan normale text editors
+B) Secrets blijven altijd encrypted op disk, zelfs tijdens bewerking
+C) Het maakt automatisch backups
+D) Het valideert YAML syntax
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Het belangrijkste voordeel:
+- **Secrets blijven altijd encrypted op disk**
+- Geen plaintext files tijdens bewerking
+- Atomic operations (decrypt → edit → encrypt in één stap)
+- Geen risico op per ongeluk plaintext secrets achterlaten
+
+Dit maakt SOPS veel veiliger dan handmatig decrypt → edit → encrypt workflows.
+</details>
+
+---
+
 ## Troubleshooting Edit Issues
 
 Als bewerking faalt:

@@ -129,6 +129,74 @@ Analyseer de output en let op:
 3. **SOPS Metadata**: Encryption informatie aan het einde
 4. **Base64 Encoding**: Data is nog steeds base64 encoded na decryptie
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Welk commando decrypteert een SOPS encrypted file?
+
+A) `sops --decrypt file.yaml`
+B) `sops -d file.yaml`
+C) `sops decrypt file.yaml`
+D) `kubectl decrypt file.yaml`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Het correcte commando is `sops -d file.yaml`:
+- `-d` is de korte versie van `--decrypt`
+- Dit toont de gedecodeerde inhoud op stdout
+- De originele file blijft encrypted
+
+`kubectl decrypt` bestaat niet - dat is een SOPS functie.
+</details>
+
+---
+
+**Vraag 2:** Hoe extraheer je een specifieke waarde uit een encrypted secret?
+
+A) `sops -d file.yaml | grep key`
+B) `sops -d --extract '["data"]["key"]' file.yaml`
+C) `sops --get key file.yaml`
+D) `sops -d file.yaml --key key`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+`sops -d --extract '["data"]["key"]' file.yaml` extraheert een specifieke waarde:
+- `--extract` gebruikt JSONPath syntax
+- Handig voor scripting en automation
+- Geeft alleen de gevraagde waarde terug
+
+De andere opties bestaan niet of zijn minder efficiënt.
+</details>
+
+---
+
+**Vraag 3:** Wat moet je doen na SOPS decryptie om de echte secret waarde te zien?
+
+A) Niets, de waarde is al leesbaar
+B) Base64 decoderen met `| base64 -d`
+C) JSON parsing met jq
+D) URL decoding
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Na SOPS decryptie zijn Kubernetes secret waarden nog steeds base64 encoded:
+1. SOPS decrypteert de encrypted waarden
+2. Maar Kubernetes secrets gebruiken base64 encoding
+3. Dus je moet nog `| base64 -d` gebruiken voor de echte waarde
+
+SOPS decrypteert alleen de SOPS encryptie, niet de Kubernetes base64 encoding.
+</details>
+
+---
+
 ## Troubleshooting Decrypt Issues
 
 Als decrypt faalt, controleer:

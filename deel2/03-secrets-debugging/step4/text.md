@@ -150,6 +150,76 @@ kubectl get pod -n secrets -l app=webapp -o yaml | grep -A 5 "secretKeyRef:"
 ### 4. **Mount Path Conflicts**
 - Meerdere secrets gemount op dezelfde path
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Hoe kun je zien welke secrets een pod gebruikt als environment variables?
+
+A) `kubectl get pod <name> -o yaml | grep -A 10 "env:"`
+B) `kubectl describe pod <name>`
+C) `kubectl get pod <name> -o jsonpath='{.spec.containers[0].env}'`
+D) Alle bovenstaande opties
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: D**
+
+Alle opties werken:
+- `kubectl get pod <name> -o yaml | grep -A 10 "env:"` - toont env sectie in YAML
+- `kubectl describe pod <name>` - toont environment variables in leesbare vorm
+- `kubectl get pod <name> -o jsonpath='{.spec.containers[0].env}'` - toont env als JSON
+
+Elke methode heeft zijn voordelen afhankelijk van wat je wilt zien.
+</details>
+
+---
+
+**Vraag 2:** Wat gebeurt er als een pod verwijst naar een non-existent secret?
+
+A) De pod start normaal maar de environment variables zijn leeg
+B) De pod kan niet starten en blijft in Pending status
+C) Kubernetes maakt automatisch een lege secret aan
+D) De pod crasht met een error
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Als een pod verwijst naar een non-existent secret:
+- De pod kan niet starten
+- Status blijft "Pending"
+- Events tonen "FailedMount" of vergelijkbare errors
+- Kubernetes wacht tot de secret beschikbaar is
+
+Dit is een safety feature om te voorkomen dat pods starten zonder benodigde credentials.
+</details>
+
+---
+
+**Vraag 3:** Wat is het verschil tussen secrets als environment variables vs. volume mounts?
+
+A) Environment variables zijn veiliger
+B) Volume mounts zijn sneller
+C) Environment variables zijn zichtbaar in proces lijst, volume mounts niet
+D) Er is geen verschil
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+Belangrijke verschillen:
+- **Environment variables**: Zichtbaar in proces lijst (`ps aux`), minder veilig
+- **Volume mounts**: Niet zichtbaar in proces lijst, veiliger
+- **Volume mounts**: Kunnen automatisch updaten bij secret wijzigingen
+- **Environment variables**: Vereisen pod restart voor updates
+
+Volume mounts zijn over het algemeen veiliger voor gevoelige data.
+</details>
+
+---
+
 ## Debugging Workflow
 
 1. **Check Pod Status**: Is de pod running?

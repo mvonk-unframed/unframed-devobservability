@@ -73,6 +73,71 @@ Let op de volgende aspecten in de output:
 
 **Belangrijk**: Secrets zijn base64 encoded, NIET encrypted! Ze bieden obfuscation maar geen echte encryptie. Voor echte encryptie heb je tools zoals SOPS nodig (wat we later behandelen).
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Wat is het belangrijkste verschil tussen Secrets en ConfigMaps?
+
+A) Secrets zijn groter dan ConfigMaps
+B) Secrets zijn base64 encoded, ConfigMaps zijn plain text
+C) ConfigMaps kunnen alleen strings bevatten
+D) Secrets zijn sneller dan ConfigMaps
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Het belangrijkste verschil:
+- **Secrets**: Base64 encoded (obfuscation, geen echte encryptie)
+- **ConfigMaps**: Plain text
+
+Secrets zijn ontworpen voor gevoelige data zoals passwords, tokens, en certificates. ConfigMaps zijn voor non-sensitive configuratie data.
+</details>
+
+---
+
+**Vraag 2:** Welk secret type wordt gebruikt voor SSL/TLS certificates?
+
+A) Opaque
+B) kubernetes.io/tls
+C) kubernetes.io/dockerconfigjson
+D) kubernetes.io/service-account-token
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Secret types:
+- **kubernetes.io/tls**: Voor SSL/TLS certificates (bevat tls.crt en tls.key)
+- **Opaque**: Algemene secrets voor custom data
+- **kubernetes.io/dockerconfigjson**: Voor Docker registry authenticatie
+- **kubernetes.io/service-account-token**: Voor service account tokens
+</details>
+
+---
+
+**Vraag 3:** Wat betekent het DATA veld in de secret output?
+
+A) De grootte van de secret in bytes
+B) Het aantal key-value pairs in de secret
+C) Het aantal pods dat de secret gebruikt
+D) De datum waarop de secret is aangemaakt
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Het DATA veld toont het aantal key-value pairs in de secret. Bijvoorbeeld:
+- DATA: 3 betekent dat de secret 3 verschillende keys bevat
+- DATA: 1 betekent dat de secret 1 key bevat
+
+De waarden zelf zijn niet zichtbaar in de lijst output voor security redenen.
+</details>
+
+---
+
 ## Wat Zie Je?
 
 Analyseer de output en identificeer:

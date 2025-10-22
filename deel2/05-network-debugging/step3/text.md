@@ -233,6 +233,79 @@ for service in $SERVICES; do
 done
 ```{{exec}}
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Welk commando test of een service bereikbaar is via DNS?
+
+A) `kubectl exec <pod> -- ping <service>`
+B) `kubectl exec <pod> -- nslookup <service>`
+C) `kubectl exec <pod> -- dig <service>`
+D) Zowel B als C zijn correct
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: D**
+
+Beide commando's testen DNS resolution:
+- `nslookup <service>` - basis DNS lookup
+- `dig <service>` - meer gedetailleerde DNS informatie
+
+Je kunt ook de volledige FQDN gebruiken:
+`nslookup frontend-service.network.svc.cluster.local`
+</details>
+
+---
+
+**Vraag 2:** Wat is het verschil tussen service port en target port?
+
+A) Er is geen verschil
+B) Service port is extern, target port is intern
+C) Service port is waar clients verbinden, target port is de pod port
+D) Target port is altijd 80
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+- **Service port**: De port waar clients mee verbinden (bijv. 8080)
+- **Target port**: De daadwerkelijke port op de pod (bijv. 80)
+
+Voorbeeld:
+```yaml
+ports:
+- port: 8080        # Service port (client verbindt hier)
+  targetPort: 80    # Pod port (waar de app luistert)
+```
+
+Dit maakt port mapping mogelijk tussen service en pods.
+</details>
+
+---
+
+**Vraag 3:** Welk tool test port connectivity zonder HTTP?
+
+A) `curl`
+B) `wget`
+C) `nc` (netcat)
+D) `ping`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+`nc` (netcat) test pure TCP/UDP connectivity:
+- `nc -zv <service> <port>` - test of port open is
+- Werkt voor alle protocols (HTTP, database, etc.)
+- Geeft alleen connectiviteit info, geen HTTP response
+
+`curl` en `wget` zijn HTTP-specifiek, `ping` test alleen ICMP (vaak geblokkeerd).
+</details>
+
+---
+
 ## Wat Heb Je Geleerd?
 
 Je hebt nu:

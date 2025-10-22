@@ -273,6 +273,103 @@ kubectl exec deployment/myapp -- curl -f http://database:5432/health
 cp secret.yaml secret.yaml.backup.$(date +%Y%m%d)
 ```
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Wat is de eerste stap in een secret rotation workflow?
+
+A) De applicatie herstarten
+B) Nieuwe credentials genereren
+C) De oude secret verwijderen
+D) Git commit maken
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+De secret rotation workflow:
+1. **Nieuwe credentials genereren** (bijv. met `openssl rand`)
+2. Secret updaten met SOPS
+3. Wijzigingen toepassen in Kubernetes
+4. Applicaties herstarten
+5. Oude credentials deactiveren
+
+Nieuwe credentials eerst genereren zorgt voor een veilige transition.
+</details>
+
+---
+
+**Vraag 2:** Hoe update je een specifieke waarde in een SOPS encrypted secret?
+
+A) `sops --update key=value file.yaml`
+B) `sops --set '["data"]["key"]' "value" file.yaml`
+C) `sops --change key value file.yaml`
+D) `sops --modify key=value file.yaml`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Het correcte commando is:
+`sops --set '["data"]["key"]' "value" file.yaml`
+
+- Gebruikt JSONPath syntax voor de key locatie
+- Wijzigt alleen de gespecificeerde waarde
+- Re-encrypteert automatisch
+- Ideaal voor geautomatiseerde rotation scripts
+
+De andere opties bestaan niet in SOPS.
+</details>
+
+---
+
+**Vraag 3:** Waarom is `kubectl rollout restart` belangrijk na secret rotation?
+
+A) Het versnelt de applicatie
+B) Het zorgt ervoor dat pods de nieuwe secret waarden gebruiken
+C) Het maakt een backup van de oude secrets
+D) Het valideert de nieuwe secrets
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+`kubectl rollout restart` is belangrijk omdat:
+- Pods laden secrets alleen bij startup
+- Environment variables worden niet automatisch ververst
+- Rolling restart zorgt voor zero-downtime updates
+- Alle pods krijgen de nieuwe secret waarden
+
+Zonder restart blijven pods de oude secret waarden gebruiken.
+</details>
+
+---
+
+**Vraag 4:** Wat is een voordeel van Git integration bij secret rotation?
+
+A) Git maakt automatisch backups
+B) Het biedt een audit trail van alle secret wijzigingen
+C) Git encrypteert automatisch secrets
+D) Het versnelt de rotation process
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Git integration voordelen:
+- **Audit trail**: Wie heeft wanneer welke secrets geroteerd
+- **Rollback mogelijkheid**: Terug naar vorige versies
+- **Team collaboration**: Meerdere mensen kunnen rotations uitvoeren
+- **Change tracking**: Geschiedenis van alle wijzigingen
+
+Dit maakt secret rotation transparant en traceerbaar.
+</details>
+
+---
+
 ## Security Voordelen van SOPS Rotation
 
 1. **Encrypted Storage**: Rotated secrets blijven encrypted in Git

@@ -85,6 +85,77 @@ Veelvoorkomende event types:
 - **Failed**: Actie is mislukt
 - **FailedScheduling**: Pod kon niet gescheduled worden
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Welke sectie in `kubectl describe pod` is het belangrijkst voor debugging?
+
+A) Metadata
+B) Spec
+C) Status
+D) Events
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: D**
+
+De **Events** sectie is het belangrijkst voor debugging omdat het toont:
+- Scheduling events
+- Image pull events
+- Container start/stop events
+- Error messages en failure redenen
+- Chronologische volgorde van wat er gebeurd is
+
+Events vertellen je meestal direct wat er mis is gegaan.
+</details>
+
+---
+
+**Vraag 2:** Wat betekent het event "FailedScheduling"?
+
+A) De container is gecrashed
+B) De pod kon niet toegewezen worden aan een node
+C) De image kon niet gedownload worden
+D) De readiness probe is gefaald
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+"FailedScheduling" betekent dat de Kubernetes scheduler de pod niet kon toewijzen aan een node. Dit kan komen door:
+- Onvoldoende CPU/memory resources op nodes
+- Node selectors die niet matchen
+- Taints/tolerations problemen
+- Anti-affinity regels
+
+De pod blijft in "Pending" status totdat scheduling mogelijk is.
+</details>
+
+---
+
+**Vraag 3:** Welk commando toont alleen de events van een specifieke namespace?
+
+A) `kubectl get events`
+B) `kubectl get events -n <namespace>`
+C) `kubectl describe events -n <namespace>`
+D) `kubectl events --namespace <namespace>`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+`kubectl get events -n <namespace>` toont alleen events uit de gespecificeerde namespace.
+
+Handige opties:
+- `kubectl get events --sort-by=.metadata.creationTimestamp` - chronologisch gesorteerd
+- `kubectl get events --field-selector type=Warning` - alleen warnings
+- `kubectl get events --watch` - real-time event monitoring
+</details>
+
+---
+
 ## Praktische Debugging Tips
 
 1. **Kijk altijd eerst naar Events** - dit vertelt je meestal wat er mis is

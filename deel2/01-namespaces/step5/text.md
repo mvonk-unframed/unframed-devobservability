@@ -64,6 +64,70 @@ Je kunt ook zoeken op labels across alle namespaces:
 kubectl get pods --all-namespaces -l app=frontend
 ```{{exec}}
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Welke twee commando's doen hetzelfde (tonen alle pods in alle namespaces)?
+
+A) `kubectl get pods --all-namespaces` en `kubectl get pods -A`
+B) `kubectl get pods -n all` en `kubectl get pods --all-namespaces`
+C) `kubectl get pods *` en `kubectl get pods -A`
+D) `kubectl get all pods` en `kubectl get pods --all-namespaces`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: A**
+
+`kubectl get pods --all-namespaces` en `kubectl get pods -A` zijn identiek:
+- `--all-namespaces` is de lange versie
+- `-A` is de korte versie (afkorting van --all-namespaces)
+
+De andere opties bestaan niet of werken niet zoals beschreven.
+</details>
+
+---
+
+**Vraag 2:** Wat is het voordeel van `kubectl get pods -A | grep nginx` boven `kubectl get pods -n webapp | grep nginx`?
+
+A) Het is sneller
+B) Het zoekt naar nginx pods in alle namespaces, niet alleen webapp
+C) Het geeft meer gedetailleerde informatie
+D) Het is veiliger
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+`kubectl get pods -A | grep nginx` zoekt naar nginx pods in het hele cluster (alle namespaces), terwijl `kubectl get pods -n webapp | grep nginx` alleen zoekt in de webapp namespace.
+
+Dit is handig wanneer je niet weet in welke namespace een specifieke pod draait, of wanneer je alle instanties van een applicatie wilt vinden.
+</details>
+
+---
+
+**Vraag 3:** Wanneer zou je `kubectl get all --all-namespaces` gebruiken?
+
+A) Voor dagelijkse monitoring van een specifieke applicatie
+B) Voor een volledig cluster overzicht tijdens troubleshooting
+C) Voor het bekijken van secrets en configmaps
+D) Voor het instellen van resource limits
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+`kubectl get all --all-namespaces` geeft een volledig overzicht van alle standaard resources in het hele cluster. Dit is vooral handig voor:
+- Troubleshooting cluster-brede problemen
+- Algemene cluster health checks
+- Overzicht krijgen van alle draaiende applicaties
+
+Let op: dit commando toont NIET alle resource types (zoals secrets, configmaps) en kan veel output genereren, dus het is niet geschikt voor dagelijkse monitoring van specifieke applicaties.
+</details>
+
+---
+
 ## Waarom Cross-namespace Viewing?
 
 Cross-namespace viewing is handig voor:

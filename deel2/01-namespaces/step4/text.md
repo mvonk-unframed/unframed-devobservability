@@ -68,6 +68,72 @@ Je kunt altijd terug naar de originele default namespace:
 kubectl config set-context --current --namespace=default
 ```{{exec}}
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Welk commando stelt de "webapp" namespace in als je default namespace?
+
+A) `kubectl set namespace webapp`
+B) `kubectl config set-context --current --namespace=webapp`
+C) `kubectl use namespace webapp`
+D) `kubectl default namespace webapp`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Het correcte commando is:
+`kubectl config set-context --current --namespace=webapp`
+
+Dit wijzigt je huidige kubectl context om de webapp namespace als default te gebruiken. Hierna kun je kubectl commando's uitvoeren zonder de `-n` flag.
+</details>
+
+---
+
+**Vraag 2:** Wat gebeurt er nadat je een default namespace hebt ingesteld?
+
+A) Alle namespaces worden samengevoegd
+B) Je kunt alleen nog resources in die namespace bekijken
+C) Kubectl commando's gebruiken automatisch die namespace tenzij je `-n` specificeert
+D) De andere namespaces worden verborgen
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+Na het instellen van een default namespace:
+- Kubectl commando's gebruiken automatisch die namespace
+- Je kunt nog steeds andere namespaces benaderen met `-n <namespace>`
+- Je kunt nog steeds `--all-namespaces` gebruiken
+- Andere namespaces blijven gewoon bestaan en toegankelijk
+
+Het is gewoon een gemak om niet steeds `-n` te hoeven typen.
+</details>
+
+---
+
+**Vraag 3:** Hoe kun je controleren welke namespace momenteel je default is?
+
+A) `kubectl get namespace`
+B) `kubectl config current-context`
+C) `kubectl config get-contexts`
+D) `kubectl config view --minify`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+`kubectl config get-contexts` toont alle contexts en markeert de huidige context met een `*`. In de NAMESPACE kolom zie je welke namespace is ingesteld als default.
+
+- `kubectl config current-context` toont alleen de context naam
+- `kubectl config view --minify` toont de volledige config maar is minder overzichtelijk
+- `kubectl get namespace` toont alle namespaces maar niet welke de default is
+</details>
+
+---
+
 ## Waarom is Dit Handig?
 
 Het instellen van een default namespace is handig omdat:

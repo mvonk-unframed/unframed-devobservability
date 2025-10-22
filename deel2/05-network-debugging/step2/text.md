@@ -224,6 +224,75 @@ kubectl get events -n network --field-selector involvedObject.kind=Endpoints
 - Port mismatch tussen service en pods
 - Verkeerde target port configuratie
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Wat zijn endpoints in Kubernetes?
+
+A) DNS namen van services
+B) IP adressen en poorten van pods die traffic van een service ontvangen
+C) Externe load balancers
+D) Ingress controllers
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Endpoints zijn de daadwerkelijke IP adressen en poorten van pods die traffic van een service ontvangen. Ze worden automatisch beheerd door Kubernetes op basis van:
+- Service selectors
+- Pod labels
+- Pod readiness status
+
+Zonder endpoints kan een service geen traffic routeren naar pods.
+</details>
+
+---
+
+**Vraag 2:** Waarom zou een pod IP adres niet in de service endpoints staan?
+
+A) De pod is te nieuw
+B) De pod faalt zijn readiness probe
+C) De pod heeft geen labels
+D) De service heeft geen ClusterIP
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Een pod wordt niet opgenomen in service endpoints als:
+- **Readiness probe faalt** - pod is niet ready voor traffic
+- Pod labels komen niet overeen met service selector
+- Pod is in een failing state
+
+Readiness probes zijn cruciaal - alleen "ready" pods ontvangen traffic via services.
+</details>
+
+---
+
+**Vraag 3:** Hoe repareer je een service die geen endpoints heeft?
+
+A) De service herstarten
+B) Controleer en corrigeer de service selector om overeen te komen met pod labels
+C) De namespace wijzigen
+D) Een nieuwe ClusterIP toewijzen
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Om een service zonder endpoints te repareren:
+1. **Controleer service selector**: `kubectl get service <name> -o jsonpath='{.spec.selector}'`
+2. **Controleer pod labels**: `kubectl get pods --show-labels`
+3. **Corrigeer mismatch**: Update service selector of pod labels
+4. **Controleer readiness**: Zorg dat pods ready zijn
+
+De meest voorkomende oorzaak is een mismatch tussen selector en labels.
+</details>
+
+---
+
 ## Wat Heb Je Geleerd?
 
 Je hebt nu:

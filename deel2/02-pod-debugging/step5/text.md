@@ -136,6 +136,98 @@ kubectl logs <pod-name> -n debugging --previous
 kubectl top pods -n debugging
 ```
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Een pod heeft status "Pending" en in de events zie je "Insufficient memory". Wat is de beste oplossing?
+
+A) De pod herstarten
+B) De image tag wijzigen
+C) De memory requests verlagen of cluster capacity verhogen
+D) De readiness probe aanpassen
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+"Insufficient memory" betekent dat er niet genoeg memory beschikbaar is op de nodes om aan de pod's memory requests te voldoen. Oplossingen:
+- Memory requests van de pod verlagen
+- Cluster capacity verhogen (meer nodes of nodes met meer memory)
+- Andere pods stoppen om ruimte te maken
+
+Het probleem ligt aan resource scheduling, niet aan de applicatie zelf.
+</details>
+
+---
+
+**Vraag 2:** Voor welk type probleem is `kubectl logs <pod> --previous` het meest nuttig?
+
+A) ImagePullBackOff
+B) Pending pods
+C) CrashLoopBackOff
+D) Service connectivity issues
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+Voor CrashLoopBackOff is `--previous` cruciaal omdat:
+- De huidige container instantie is mogelijk leeg (net gestart)
+- De vorige instantie bevat de logs van de crash
+- Je kunt de error messages zien die tot de crash hebben geleid
+- Het toont de exit code en stack traces
+
+Voor ImagePullBackOff en Pending pods zijn events belangrijker dan logs.
+</details>
+
+---
+
+**Vraag 3:** Een pod toont "0/1 Ready" maar status is "Running". Wat is waarschijnlijk het probleem?
+
+A) De container image bestaat niet
+B) Er is onvoldoende memory
+C) De readiness probe faalt
+D) De pod is aan het crashen
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+"Running" maar "0/1 Ready" betekent:
+- De container is gestart en draait
+- Maar de readiness probe faalt
+- Kubernetes markeert de pod als "not ready"
+- Traffic wordt niet naar deze pod gestuurd
+
+Check de readiness probe configuratie en het health check endpoint van de applicatie.
+</details>
+
+---
+
+**Vraag 4:** Welke debugging stap doe je het EERST bij een pod probleem?
+
+A) Logs bekijken
+B) Resource usage controleren
+C) Pod status en events bekijken
+D) In de container inloggen
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+De debugging workflow begint altijd met:
+1. `kubectl get pods` - zie de status
+2. `kubectl describe pod` - bekijk events en configuratie
+3. Dan pas logs, resource usage, etc.
+
+Events vertellen je meestal direct wat er mis is, wat tijd bespaart bij het debuggen.
+</details>
+
+---
+
 ## Veelvoorkomende Problemen en Oplossingen
 
 | Probleem | Oorzaak | Oplossing |

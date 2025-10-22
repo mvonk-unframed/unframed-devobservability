@@ -48,6 +48,70 @@ Om te zien hoe lang pods in hun huidige state zijn:
 kubectl get pods -n debugging --sort-by=.metadata.creationTimestamp
 ```{{exec}}
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Wat betekent de pod status "CrashLoopBackOff"?
+
+A) De pod is succesvol gestart en draait normaal
+B) De pod crasht herhaaldelijk en Kubernetes probeert het steeds opnieuw
+C) De pod wacht op een beschikbare node
+D) De pod kan de container image niet downloaden
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+"CrashLoopBackOff" betekent dat:
+- De pod crasht herhaaldelijk
+- Kubernetes probeert automatisch de pod opnieuw te starten
+- Er is een exponential backoff tussen restart pogingen
+- Dit duidt meestal op een probleem in de applicatie code of configuratie
+</details>
+
+---
+
+**Vraag 2:** Wat is het verschil tussen READY en STATUS kolommen?
+
+A) Ze betekenen hetzelfde
+B) READY toont hoeveel containers klaar zijn, STATUS toont de lifecycle state
+C) READY is voor services, STATUS is voor pods
+D) STATUS is belangrijker dan READY
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+- **READY**: Toont hoeveel containers ready zijn (bijv. 1/1 = 1 van 1 containers ready)
+- **STATUS**: Toont de huidige lifecycle state (Running, Pending, CrashLoopBackOff, etc.)
+
+Een pod kan "Running" status hebben maar "0/1 Ready" als de readiness probe faalt!
+</details>
+
+---
+
+**Vraag 3:** Welke pod status duidt op een probleem met het downloaden van de container image?
+
+A) CrashLoopBackOff
+B) Pending
+C) ImagePullBackOff
+D) OOMKilled
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+"ImagePullBackOff" betekent dat Kubernetes de container image niet kan downloaden. Dit kan komen door:
+- Verkeerde image naam of tag
+- Ontbrekende authenticatie voor private registries
+- Netwerk problemen
+- Image bestaat niet in de registry
+</details>
+
+---
+
 ## Wat Zie Je?
 
 Analyseer de output en identificeer:

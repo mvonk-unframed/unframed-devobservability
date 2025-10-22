@@ -263,6 +263,101 @@ fi
 - Path-based routing werkt
 - TLS termination werkt (indien geconfigureerd)
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Wat is de eerste stap bij network troubleshooting?
+
+A) Pods herstarten
+B) Services verwijderen en opnieuw aanmaken
+C) Overall status van alle network resources bekijken
+D) Ingress controller logs bekijken
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+De troubleshooting workflow begint met:
+1. **Overall assessment**: `kubectl get all -n <namespace>`
+2. **Identify failing components**: Welke resources hebben problemen?
+3. **Analyze systematically**: Service → Endpoints → Pods → Probes
+
+Een breed overzicht geeft je context voordat je diep duikt in specifieke componenten.
+</details>
+
+---
+
+**Vraag 2:** In welke volgorde debug je network connectivity problemen?
+
+A) Pods → Services → Ingress → DNS
+B) DNS → Service → Endpoints → Pods → Probes
+C) Ingress → DNS → Pods → Services
+D) Random, de volgorde maakt niet uit
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+De systematische debugging volgorde:
+1. **DNS resolution**: Kunnen services gevonden worden?
+2. **Service configuration**: Bestaat de service?
+3. **Endpoints**: Heeft de service endpoints?
+4. **Pods**: Zijn pods running en ready?
+5. **Probes**: Falen readiness/liveness probes?
+
+Deze volgorde volgt de network flow van client naar pod.
+</details>
+
+---
+
+**Vraag 3:** Wat is de meest effectieve manier om een failing readiness probe te repareren?
+
+A) De pod herstarten
+B) De readiness probe uitschakelen
+C) Het probe endpoint corrigeren naar een werkende URL
+D) De probe timeout verhogen
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: C**
+
+Voor failing readiness probes:
+1. **Identificeer het probleem**: Welk endpoint faalt?
+2. **Test handmatig**: `curl http://<pod-ip>/<probe-path>`
+3. **Corrigeer de configuratie**: Update naar werkende endpoint
+4. **Verify**: Controleer dat pods ready worden
+
+Readiness probes zijn cruciaal voor service endpoints - fix de root cause, niet de symptomen.
+</details>
+
+---
+
+**Vraag 4:** Hoe valideer je end-to-end connectivity na fixes?
+
+A) Alleen pod status controleren
+B) Test de complete flow: Client → Ingress → Service → Pod
+C) Alleen service endpoints controleren
+D) Alleen DNS resolution testen
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+End-to-end validatie vereist testing van de complete flow:
+1. **External access**: Test via ingress met Host headers
+2. **Service connectivity**: Test direct service toegang
+3. **Pod connectivity**: Test direct pod toegang
+4. **Load balancing**: Verify traffic distributie
+5. **Health checks**: Confirm alle components healthy
+
+Dit zorgt ervoor dat de hele applicatie stack werkt, niet alleen individuele componenten.
+</details>
+
+---
+
 ## Troubleshooting Workflow Samenvatting
 
 1. **🔍 Identify**: Welke component faalt?

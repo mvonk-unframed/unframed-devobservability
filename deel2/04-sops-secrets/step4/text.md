@@ -238,6 +238,79 @@ kubectl rollout restart deployment/myapp
 kubectl get events --field-selector reason=FailedMount
 ```
 
+## Multiple Choice Vragen
+
+**Vraag 1:** Hoe pas je een SOPS encrypted secret toe in Kubernetes?
+
+A) `kubectl apply -f encrypted-secret.yaml`
+B) `sops -d encrypted-secret.yaml | kubectl apply -f -`
+C) `kubectl apply --decrypt -f encrypted-secret.yaml`
+D) `sops apply encrypted-secret.yaml`
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+Het correcte commando is:
+`sops -d encrypted-secret.yaml | kubectl apply -f -`
+
+- SOPS decrypteert de file (`-d`)
+- Output wordt gepipet naar kubectl
+- Kubectl krijgt de gedecodeerde YAML
+- Geen plaintext files op disk
+
+Kubernetes kan encrypted files niet direct lezen.
+</details>
+
+---
+
+**Vraag 2:** Wat gebeurt er als je een pod restart na een secret update?
+
+A) De pod gebruikt automatisch de nieuwe secret waarden
+B) De pod moet handmatig opnieuw geconfigureerd worden
+C) De oude secret waarden blijven actief
+D) De pod crasht
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: A**
+
+Na een secret update en pod restart:
+- Kubernetes laadt de nieuwe secret waarden
+- Environment variables krijgen de nieuwe waarden
+- Volume mounts tonen de nieuwe files
+- Geen handmatige herconfiguratie nodig
+
+Dit maakt secret rotation mogelijk zonder applicatie wijzigingen.
+</details>
+
+---
+
+**Vraag 3:** Wat is een voordeel van SOPS in CI/CD pipelines?
+
+A) Het is sneller dan andere tools
+B) Encrypted secrets kunnen veilig in Git repositories worden opgeslagen
+C) Het vereist geen authentication
+D) Het werkt alleen met Jenkins
+
+<details>
+<summary>Klik hier voor het antwoord</summary>
+
+**Correct antwoord: B**
+
+SOPS voordelen in CI/CD:
+- **Encrypted secrets in Git**: Veilig om in repositories op te slaan
+- **No plaintext in pipelines**: Secrets blijven encrypted tot deployment
+- **Audit trail**: Git history toont alle wijzigingen
+- **Team collaboration**: Meerdere mensen kunnen secrets beheren
+
+Dit maakt secure DevOps workflows mogelijk.
+</details>
+
+---
+
 ## Security Voordelen
 
 1. **No Plaintext Storage**: Secrets blijven encrypted tot deployment
