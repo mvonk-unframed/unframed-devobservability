@@ -73,77 +73,40 @@ Let op de volgende aspecten in de output:
 
 **Belangrijk**: Secrets zijn base64 encoded, NIET encrypted! Ze bieden obfuscation maar geen echte encryptie. Voor echte encryptie heb je tools zoals SOPS nodig (wat we later behandelen).
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Wat is het belangrijkste verschil tussen Secrets en ConfigMaps?
+### Opdracht: Secret Type Classificatie
 
-A) Secrets zijn groter dan ConfigMaps
-B) Secrets zijn base64 encoded, ConfigMaps zijn plain text
-C) ConfigMaps kunnen alleen strings bevatten
-D) Secrets zijn sneller dan ConfigMaps
+Je gaat nu secrets analyseren en classificeren op basis van hun type en inhoud.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Analyseer alle secrets** in de secrets namespace en classificeer ze:
+   - Tel hoeveel Opaque secrets er zijn
+   - Tel hoeveel TLS secrets er zijn
+   - Tel hoeveel Docker registry secrets er zijn
 
-**Correct antwoord: B**
+2. **Maak een ConfigMap aan** met de naam `secret-classification` die je analyse bevat:
 
-Het belangrijkste verschil:
-- **Secrets**: Base64 encoded (obfuscation, geen echte encryptie)
-- **ConfigMaps**: Plain text
+```bash
+kubectl create configmap secret-classification \
+  --from-literal=opaque-count="<aantal>" \
+  --from-literal=tls-count="<aantal>" \
+  --from-literal=docker-count="<aantal>" \
+  --from-literal=total-secrets="<totaal-aantal>"
+```
 
-Secrets zijn ontworpen voor gevoelige data zoals passwords, tokens, en certificates. ConfigMaps zijn voor non-sensitive configuratie data.
-</details>
+3. **Identificeer het secret met de meeste data keys** en maak een Secret aan met de naam `secret-analysis`:
 
----
+```bash
+kubectl create secret generic secret-analysis \
+  --from-literal=largest-secret="<secret-naam>" \
+  --from-literal=key-count="<aantal-keys>"
+```
 
-**Vraag 2:** Welk secret type wordt gebruikt voor SSL/TLS certificates?
+### Verificatie
 
-A) Opaque
-B) kubernetes.io/tls
-C) kubernetes.io/dockerconfigjson
-D) kubernetes.io/service-account-token
+De verificatie controleert:
+- ✅ Of je secret types kunt identificeren en classificeren
+- ✅ Of je het verschil tussen Secrets en ConfigMaps begrijpt
+- ✅ Of je secret metadata kunt analyseren
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-Secret types:
-- **kubernetes.io/tls**: Voor SSL/TLS certificates (bevat tls.crt en tls.key)
-- **Opaque**: Algemene secrets voor custom data
-- **kubernetes.io/dockerconfigjson**: Voor Docker registry authenticatie
-- **kubernetes.io/service-account-token**: Voor service account tokens
-</details>
-
----
-
-**Vraag 3:** Wat betekent het DATA veld in de secret output?
-
-A) De grootte van de secret in bytes
-B) Het aantal key-value pairs in de secret
-C) Het aantal pods dat de secret gebruikt
-D) De datum waarop de secret is aangemaakt
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-Het DATA veld toont het aantal key-value pairs in de secret. Bijvoorbeeld:
-- DATA: 3 betekent dat de secret 3 verschillende keys bevat
-- DATA: 1 betekent dat de secret 1 key bevat
-
-De waarden zelf zijn niet zichtbaar in de lijst output voor security redenen.
-</details>
-
----
-
-## Wat Zie Je?
-
-Analyseer de output en identificeer:
-1. Hoeveel secrets zijn er in totaal?
-2. Welke verschillende types zie je?
-3. Welke secrets hebben de meeste data keys?
-4. Zijn er secrets die recent zijn aangemaakt?
-
-Deze informatie helpt je begrijpen welke credentials beschikbaar zijn in je cluster.
+**Tip**: Gebruik [`kubectl get secrets -n secrets --field-selector type=Opaque`](kubectl get secrets -n secrets --field-selector type=Opaque) om te filteren op type!

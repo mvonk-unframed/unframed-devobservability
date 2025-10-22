@@ -129,80 +129,39 @@ Analyseer de output en let op:
 3. **SOPS Metadata**: Encryption informatie aan het einde
 4. **Base64 Encoding**: Data is nog steeds base64 encoded na decryptie
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Welk commando decrypteert een SOPS encrypted file?
+### Opdracht: SOPS Decryptie en Waarde Extractie
 
-A) `sops --decrypt file.yaml`
-B) `sops -d file.yaml`
-C) `sops decrypt file.yaml`
-D) `kubectl decrypt file.yaml`
+Je gaat nu SOPS encrypted secrets decrypten en specifieke waarden extraheren.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Decodeer de database secret** en extraheer de username:
+   - Gebruik SOPS om de encrypted file te decrypten
+   - Extraheer alleen de username waarde
+   - Decodeer de base64 waarde om de echte username te zien
 
-**Correct antwoord: B**
+2. **Maak een Secret aan** met de naam `sops-analysis` die je bevindingen bevat:
 
-Het correcte commando is `sops -d file.yaml`:
-- `-d` is de korte versie van `--decrypt`
-- Dit toont de gedecodeerde inhoud op stdout
-- De originele file blijft encrypted
+```bash
+kubectl create secret generic sops-analysis \
+  --from-literal=decrypted-username="<gedecodeerde-username>" \
+  --from-literal=sops-version="<sops-versie-uit-metadata>" \
+  --from-literal=encryption-method="age"
+```
 
-`kubectl decrypt` bestaat niet - dat is een SOPS functie.
-</details>
+3. **Test SOPS functionaliteit** door een nieuwe encrypted waarde toe te voegen en maak een ConfigMap aan met de naam `sops-test`:
 
----
+```bash
+kubectl create configmap sops-test \
+  --from-literal=test-completed="true" \
+  --from-literal=new-value-added="<nieuwe-key-naam>"
+```
 
-**Vraag 2:** Hoe extraheer je een specifieke waarde uit een encrypted secret?
+### Verificatie
 
-A) `sops -d file.yaml | grep key`
-B) `sops -d --extract '["data"]["key"]' file.yaml`
-C) `sops --get key file.yaml`
-D) `sops -d file.yaml --key key`
+De verificatie controleert:
+- ✅ Of je SOPS kunt gebruiken voor decryptie
+- ✅ Of je specifieke waarden kunt extraheren
+- ✅ Of je base64 decodering begrijpt na SOPS decryptie
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-`sops -d --extract '["data"]["key"]' file.yaml` extraheert een specifieke waarde:
-- `--extract` gebruikt JSONPath syntax
-- Handig voor scripting en automation
-- Geeft alleen de gevraagde waarde terug
-
-De andere opties bestaan niet of zijn minder efficiënt.
-</details>
-
----
-
-**Vraag 3:** Wat moet je doen na SOPS decryptie om de echte secret waarde te zien?
-
-A) Niets, de waarde is al leesbaar
-B) Base64 decoderen met `| base64 -d`
-C) JSON parsing met jq
-D) URL decoding
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-Na SOPS decryptie zijn Kubernetes secret waarden nog steeds base64 encoded:
-1. SOPS decrypteert de encrypted waarden
-2. Maar Kubernetes secrets gebruiken base64 encoding
-3. Dus je moet nog `| base64 -d` gebruiken voor de echte waarde
-
-SOPS decrypteert alleen de SOPS encryptie, niet de Kubernetes base64 encoding.
-</details>
-
----
-
-## Troubleshooting Decrypt Issues
-
-Als decrypt faalt, controleer:
-1. **Key File**: Is `SOPS_AGE_KEY_FILE` correct ingesteld?
-2. **Key Access**: Heb je toegang tot de juiste encryption key?
-3. **File Integrity**: Is het encrypted file niet corrupt?
-4. **SOPS Version**: Zijn er versie incompatibiliteiten?
-
-Je kunt nu encrypted secrets veilig decrypten en de inhoud bekijken!
+**Tip**: Gebruik [`sops -d --extract '["data"]["username"]' file.yaml | base64 -d`](sops -d --extract '["data"]["username"]' file.yaml | base64 -d) voor directe waarde extractie!

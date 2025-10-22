@@ -40,80 +40,47 @@ Voor de volledige configuratie van een namespace kun je YAML output gebruiken:
 kubectl get namespace monitoring -o yaml
 ```{{exec}}
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Welke kubectl optie geeft je de meest gedetailleerde informatie over een namespace?
+### Opdracht: Namespace Labels Toevoegen
 
-A) `kubectl get namespace -o wide`
-B) `kubectl describe namespace <name>`
-C) `kubectl get namespace -o yaml`
-D) `kubectl get namespace --show-labels`
+Je gaat nu labels toevoegen aan namespaces om te laten zien dat je begrijpt hoe je namespace metadata kunt beheren.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Bekijk de webapp namespace in YAML formaat** en zoek naar de `labels` sectie
+2. **Voeg een label toe** aan de webapp namespace met key `purpose` en value `frontend`
+3. **Voeg een label toe** aan de database namespace met key `purpose` en value `backend`
 
-**Correct antwoord: C**
+**Commando's die je nodig hebt:**
 
-`kubectl get namespace -o yaml` geeft de volledige YAML configuratie van een namespace, inclusief alle metadata, labels, annotations, en configuratie details. Dit is de meest uitgebreide output.
+```bash
+# Label toevoegen aan namespace
+kubectl label namespace webapp purpose=frontend
 
-- `-o wide` geeft wat extra kolommen
-- `describe` geeft een samenvatting in leesbare vorm
-- `--show-labels` toont alleen de labels
-</details>
+# Label toevoegen aan database namespace
+kubectl label namespace database purpose=backend
+```
 
----
+### Verificatie Opdracht
 
-**Vraag 2:** Wat betekent het als een namespace de status "Active" heeft?
+Maak een ConfigMap aan in de `default` namespace met de naam `namespace-analysis` die de volgende informatie bevat:
 
-A) Er draaien momenteel pods in deze namespace
-B) De namespace is operationeel en kan resources bevatten
-C) De namespace wordt automatisch gemonitord
-D) De namespace heeft resource quota's ingesteld
+- **total-namespaces**: Het totale aantal namespaces
+- **custom-namespaces**: Het aantal custom namespaces (niet-standaard)
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+**Voorbeeld:**
+```bash
+kubectl create configmap namespace-analysis \
+  --from-literal=total-namespaces=8 \
+  --from-literal=custom-namespaces=5
+```
 
-**Correct antwoord: B**
+### Wat Leer Je Hiervan?
 
-Een "Active" status betekent dat de namespace operationeel is en resources kan bevatten. Het zegt niets over:
-- Of er daadwerkelijk pods in draaien
-- Of er monitoring is ingesteld
-- Of er resource quota's zijn geconfigureerd
-
-Een namespace kan Active zijn maar leeg, of vol met resources.
-</details>
-
----
-
-**Vraag 3:** Welke informatie vind je NIET in de output van `kubectl describe namespace`?
-
-A) Labels en annotations
-B) Resource quota's (indien ingesteld)
-C) Lijst van alle pods in de namespace
-D) Namespace status en age
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: C**
-
-`kubectl describe namespace` toont informatie over de namespace zelf, maar niet de inhoud ervan. Voor een lijst van pods gebruik je:
-`kubectl get pods -n <namespace>`
-
-De describe output bevat wel:
-- Labels en annotations
-- Resource quota's (als die zijn ingesteld)
-- Status en creation timestamp
-</details>
-
----
-
-## Wat Leer Je Hiervan?
-
-Door namespaces te beschrijven leer je:
+Door namespaces te beschrijven en labelen leer je:
 1. Wanneer ze zijn aangemaakt
 2. Welke labels en annotations ze hebben
 3. Of er resource quota's zijn ingesteld
 4. De huidige status van de namespace
+5. Hoe je metadata kunt toevoegen voor organisatie
 
-Bekijk de verschillende namespaces en probeer te identificeren welke voor welk doel gebruikt worden op basis van hun namen.
+**Tip:** Gebruik [`kubectl get namespace --show-labels`](kubectl get namespace --show-labels) om alle labels te zien!

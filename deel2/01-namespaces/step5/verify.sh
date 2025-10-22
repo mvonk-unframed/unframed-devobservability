@@ -1,44 +1,56 @@
 #!/bin/bash
 
-# Controleer of de gebruiker cross-namespace commando's heeft uitgevoerd
-# We testen dit door te controleren of ze de --all-namespaces flag kunnen gebruiken
+# Controleer of de gebruiker de cluster-brede analyse opdracht correct heeft uitgevoerd
 
-# Test of gebruiker pods in alle namespaces kan bekijken
-if ! kubectl get pods --all-namespaces &> /dev/null; then
-    echo "Kon pods in alle namespaces niet bekijken. Zorg ervoor dat je 'kubectl get pods --all-namespaces' hebt uitgevoerd."
+# Controleer of cluster-analysis secret bestaat
+if ! kubectl get secret cluster-analysis -n default &> /dev/null; then
+    echo "❌ Secret 'cluster-analysis' niet gevonden in default namespace."
+    echo "💡 Tip: Maak een secret aan met cluster-brede resource tellingen"
     exit 1
 fi
 
-# Test of gebruiker de korte versie (-A) kan gebruiken
-if ! kubectl get pods -A &> /dev/null; then
-    echo "Kon pods met -A flag niet bekijken."
+# Haal werkelijke waarden op
+actual_total_pods=$(kubectl get pods --all-namespaces --no-headers 2>/dev/null | wc -l)
+actual_nginx_pods=$(kubectl get pods --all-namespaces --no-headers 2>/dev/null | grep -c nginx || echo "0")
+actual_total_services=$(kubectl get services --all-namespaces --no-headers 2>/dev/null | wc -l)
+
+# Haal waarden uit secret op
+secret_total_pods=$(kubectl get secret cluster-analysis -n default -o jsonpath='{.data.total-pods}' 2>/dev/null | base64 -d)
+secret_nginx_pods=$(kubectl get secret cluster-analysis -n default -o jsonpath='{.data.nginx-pods}' 2>/dev/null | base64 -d)
+secret_total_services=$(kubectl get secret cluster-analysis -n default -o jsonpath='{.data.total-services}' 2>/dev/null | base64 -d)
+
+# Valideer tellingen
+if [ "$secret_total_pods" != "$actual_total_pods" ]; then
+    echo "❌ Total pods telling incorrect. Verwacht: $actual_total_pods, Gevonden: $secret_total_pods"
+    echo "💡 Tip: Tel opnieuw met 'kubectl get pods --all-namespaces'"
     exit 1
 fi
 
-# Test of gebruiker deployments in alle namespaces kan bekijken
-if ! kubectl get deployments --all-namespaces &> /dev/null; then
-    echo "Kon deployments in alle namespaces niet bekijken."
+if [ "$secret_nginx_pods" != "$actual_nginx_pods" ]; then
+    echo "❌ Nginx pods telling incorrect. Verwacht: $actual_nginx_pods, Gevonden: $secret_nginx_pods"
+    echo "💡 Tip: Tel opnieuw met 'kubectl get pods --all-namespaces | grep nginx'"
     exit 1
 fi
 
-# Test of gebruiker services in alle namespaces kan bekijken
-if ! kubectl get services --all-namespaces &> /dev/null; then
-    echo "Kon services in alle namespaces niet bekijken."
+if [ "$secret_total_services" != "$actual_total_services" ]; then
+    echo "❌ Total services telling incorrect. Verwacht: $actual_total_services, Gevonden: $secret_total_services"
+    echo "💡 Tip: Tel opnieuw met 'kubectl get services --all-namespaces'"
     exit 1
 fi
 
-# Controleer of er daadwerkelijk resources in meerdere namespaces zijn
-total_pods=$(kubectl get pods --all-namespaces --no-headers 2>/dev/null | wc -l)
-if [ "$total_pods" -lt 5 ]; then
-    echo "Er lijken niet genoeg pods in verschillende namespaces te zijn."
-    exit 1
+# Bonus: Controleer label-search ConfigMap (optioneel)
+bonus_points=""
+if kubectl get configmap label-search -n default &> /dev/null; then
+    frontend_pods=$(kubectl get pods --all-namespaces -l app=frontend --no-headers 2>/dev/null | wc -l)
+    secret_frontend_pods=$(kubectl get configmap label-search -n default -o jsonpath='{.data.frontend-pods}' 2>/dev/null)
+    if [ "$secret_frontend_pods" = "$frontend_pods" ]; then
+        bonus_points=" + bonus label search ✨"
+    fi
 fi
 
-# Test of gebruiker kan filteren met grep (optioneel, maar goed om te testen)
-nginx_pods=$(kubectl get pods --all-namespaces 2>/dev/null | grep -c nginx || true)
-if [ "$nginx_pods" -eq 0 ]; then
-    echo "Waarschuwing: Geen nginx pods gevonden, maar dit is niet kritiek."
-fi
-
-echo "Fantastisch! Je hebt geleerd hoe je resources across alle namespaces kunt bekijken en het volledige cluster kunt monitoren."
+echo "✅ Fantastisch! Je hebt cluster-brede resource analyse beheerst:"
+echo "   - Total pods: $actual_total_pods"
+echo "   - Nginx pods: $actual_nginx_pods"
+echo "   - Total services: $actual_total_services"
+echo "✅ Je kunt nu het volledige cluster monitoren en cross-namespace zoeken$bonus_points"
 exit 0

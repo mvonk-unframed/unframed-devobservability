@@ -37,54 +37,34 @@ kubectl get ns
 
 Je zou verschillende namespaces moeten zien, waaronder de standaard Kubernetes namespaces en enkele custom namespaces die zijn aangemaakt voor deze training.
 
-## Multiple Choice Vraag
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Welke van de volgende namespaces zijn standaard Kubernetes namespaces die automatisch worden aangemaakt?
+Nu ga je je kennis toetsen door een praktische opdracht uit te voeren. Je moet het aantal namespaces tellen en een namespace aanmaken met die naam.
 
-A) `default`, `webapp`, `database`
-B) `kube-system`, `kube-public`, `kube-node-lease`
-C) `monitoring`, `secrets`, `network`
-D) `frontend`, `backend`, `kube-system`
+### Opdracht 1: Tel de Namespaces
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Voer het commando uit om alle namespaces te bekijken**
+2. **Tel het totale aantal namespaces** (inclusief standaard Kubernetes namespaces)
+3. **Maak een nieuwe namespace aan** met als naam het aantal namespaces dat je hebt geteld
 
-**Correct antwoord: B**
+**Voorbeeld:** Als je 8 namespaces ziet, maak dan een namespace aan met de naam `ns-8`:
 
-De standaard Kubernetes namespaces zijn:
-- `kube-system` - Voor Kubernetes systeem componenten
-- `kube-public` - Voor publiek toegankelijke resources
-- `kube-node-lease` - Voor node heartbeat informatie
-- `default` - Voor resources zonder specifieke namespace
+```bash
+kubectl create namespace ns-8
+```
 
-Namespaces zoals `webapp`, `database`, `monitoring`, `secrets`, `network`, `frontend`, en `backend` zijn custom namespaces die zijn aangemaakt voor specifieke applicaties of doeleinden.
-</details>
+### Opdracht 2: Identificeer Standaard Namespaces
 
----
+Bekijk de output van [`kubectl get namespaces`](kubectl get namespaces) en identificeer:
 
-**Vraag 2:** Wat is het hoofddoel van namespaces in Kubernetes?
+1. **Standaard Kubernetes namespaces** (beginnen meestal met `kube-` of zijn `default`)
+2. **Custom namespaces** (aangemaakt voor specifieke applicaties)
 
-A) Om pods sneller te laten opstarten
-B) Om resources te organiseren en te isoleren
-C) Om meer storage ruimte te creëren
-D) Om de netwerksnelheid te verhogen
+### Verificatie
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+Je opdracht wordt automatisch gecontroleerd. De verificatie controleert:
+- ✅ Of je de namespace commando's hebt uitgevoerd
+- ✅ Of je een namespace hebt aangemaakt met het juiste aantal
+- ✅ Of alle verwachte namespaces bestaan
 
-**Correct antwoord: B**
-
-Namespaces bieden:
-- **Organisatie**: Verschillende teams of projecten kunnen hun eigen namespace hebben
-- **Isolatie**: Resources in verschillende namespaces kunnen niet direct met elkaar communiceren
-- **Resource Management**: Je kunt quota's en limits instellen per namespace
-- **Security**: RBAC policies kunnen per namespace worden toegepast
-</details>
-
----
-
-## Praktische Oefening
-
-Bekijk de output van de commando's hierboven en identificeer:
-1. Welke namespaces zijn standaard Kubernetes namespaces?
-2. Welke namespaces zijn custom aangemaakt voor applicaties?
+**Tip:** Gebruik [`kubectl get ns`](kubectl get ns) als afkorting voor `kubectl get namespaces`

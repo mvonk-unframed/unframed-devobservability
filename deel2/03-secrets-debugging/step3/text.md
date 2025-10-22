@@ -125,74 +125,39 @@ kubectl get secret api-keys -n secrets -o jsonpath='{.data.stripe-key}' | base64
 kubectl get secret webapp-tls -n secrets -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -dates -noout
 ```
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Waarom zijn Kubernetes secrets base64 encoded?
+### Opdracht: Secret Decodering en Validatie
 
-A) Voor encryptie en security
-B) Voor obfuscation, niet voor echte security
-C) Om de grootte te verkleinen
-D) Voor betere performance
+Je gaat nu secrets decoderen en de inhoud valideren voor debugging doeleinden.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Decodeer database credentials** en valideer de waarden:
+   - Username moet een geldige database user zijn
+   - Password moet minstens 8 karakters lang zijn
+   - Host moet een geldige hostname/IP zijn
 
-**Correct antwoord: B**
+2. **Maak een Secret aan** met de naam `credential-validation` die je validatie resultaten bevat:
 
-Base64 encoding in Kubernetes secrets is voor **obfuscation**, NIET voor echte security:
-- Het voorkomt dat secrets per ongeluk zichtbaar zijn in logs
-- Het is gemakkelijk te decoderen met `base64 -d`
-- Voor echte encryptie heb je tools zoals SOPS nodig
-- Het is geen vervanging voor proper secret management
-</details>
+```bash
+kubectl create secret generic credential-validation \
+  --from-literal=username-valid="true/false" \
+  --from-literal=password-length="<aantal-karakters>" \
+  --from-literal=host-format="<hostname-of-ip>"
+```
 
----
+3. **Decodeer een API key** en controleer het formaat. Maak een ConfigMap aan met de naam `api-validation`:
 
-**Vraag 2:** Welk commando decodeert een specifieke key uit een secret?
+```bash
+kubectl create configmap api-validation \
+  --from-literal=stripe-key-prefix="<eerste-7-karakters>" \
+  --from-literal=jwt-secret-length="<aantal-karakters>"
+```
 
-A) `kubectl get secret <name> -o yaml | base64 -d`
-B) `kubectl get secret <name> -o jsonpath='{.data.<key>}' | base64 -d`
-C) `kubectl decode secret <name> <key>`
-D) `kubectl get secret <name> --decode <key>`
+### Verificatie
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+De verificatie controleert:
+- ✅ Of je secrets kunt decoderen en waarden kunt valideren
+- ✅ Of je security best practices begrijpt
+- ✅ Of je credential formaten kunt controleren
 
-**Correct antwoord: B**
-
-Het correcte commando is:
-`kubectl get secret <name> -o jsonpath='{.data.<key>}' | base64 -d`
-
-Bijvoorbeeld:
-`kubectl get secret database-credentials -o jsonpath='{.data.username}' | base64 -d`
-
-De andere opties bestaan niet in kubectl.
-</details>
-
----
-
-**Vraag 3:** Wat is een belangrijke security overweging bij het decoderen van secrets?
-
-A) Het is altijd veilig om secrets te decoderen
-B) Alleen decoderen voor debugging, nooit in productie logs
-C) Base64 decoding is niet mogelijk
-D) Secrets kunnen niet gedecodeerd worden
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-Belangrijke security overwegingen:
-- **Alleen decoderen voor debugging doeleinden**
-- **Nooit secret waarden loggen in productie**
-- **Deel nooit gedecodeerde secrets**
-- **Gebruik geen echo in productie scripts**
-- **Roteer secrets regelmatig**
-
-Base64 is gemakkelijk te decoderen, dus behandel gedecodeerde waarden als zeer gevoelig.
-</details>
-
----
-
-Nu kun je secret waarden decoderen voor effectieve debugging!
+**Waarschuwing**: Decodeer secrets alleen voor debugging - nooit in productie logs!

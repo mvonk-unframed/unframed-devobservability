@@ -85,82 +85,42 @@ Veelvoorkomende event types:
 - **Failed**: Actie is mislukt
 - **FailedScheduling**: Pod kon niet gescheduled worden
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Welke sectie in `kubectl describe pod` is het belangrijkst voor debugging?
+### Opdracht: Events Analyse en Probleem Identificatie
 
-A) Metadata
-B) Spec
-C) Status
-D) Events
+Je gaat nu events analyseren om pod problemen te diagnosticeren.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Zoek een pod met "ImagePullBackOff" status** en analyseer de events
+2. **Zoek een pod met "Pending" status** en identificeer waarom het niet kan starten
+3. **Maak een Secret aan** met de naam `problem-diagnosis` die de problemen documenteert:
 
-**Correct antwoord: D**
+```bash
+kubectl create secret generic problem-diagnosis \
+  --from-literal=imagepull-pod="<pod-naam>" \
+  --from-literal=imagepull-reason="<reden-uit-events>" \
+  --from-literal=pending-pod="<pod-naam>" \
+  --from-literal=pending-reason="<reden-uit-events>"
+```
 
-De **Events** sectie is het belangrijkst voor debugging omdat het toont:
-- Scheduling events
-- Image pull events
-- Container start/stop events
-- Error messages en failure redenen
-- Chronologische volgorde van wat er gebeurd is
+### Bonus Opdracht: Event Timeline
 
-Events vertellen je meestal direct wat er mis is gegaan.
-</details>
+Maak een ConfigMap aan met de naam `event-timeline` die de laatste 5 warning events bevat:
 
----
+```bash
+# Gebruik dit commando om warnings te vinden:
+kubectl get events -n debugging --field-selector type=Warning --sort-by=.metadata.creationTimestamp
 
-**Vraag 2:** Wat betekent het event "FailedScheduling"?
+# Maak ConfigMap aan met aantal warnings:
+kubectl create configmap event-timeline \
+  --from-literal=warning-count="<aantal-warnings>"
+```
 
-A) De container is gecrashed
-B) De pod kon niet toegewezen worden aan een node
-C) De image kon niet gedownload worden
-D) De readiness probe is gefaald
+### Verificatie
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+De verificatie controleert:
+- ✅ Of je events kunt analyseren en problemen kunt identificeren
+- ✅ Of je de juiste pod namen en redenen hebt gevonden
+- ✅ Of je begrijpt hoe events helpen bij debugging
 
-**Correct antwoord: B**
-
-"FailedScheduling" betekent dat de Kubernetes scheduler de pod niet kon toewijzen aan een node. Dit kan komen door:
-- Onvoldoende CPU/memory resources op nodes
-- Node selectors die niet matchen
-- Taints/tolerations problemen
-- Anti-affinity regels
-
-De pod blijft in "Pending" status totdat scheduling mogelijk is.
-</details>
-
----
-
-**Vraag 3:** Welk commando toont alleen de events van een specifieke namespace?
-
-A) `kubectl get events`
-B) `kubectl get events -n <namespace>`
-C) `kubectl describe events -n <namespace>`
-D) `kubectl events --namespace <namespace>`
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-`kubectl get events -n <namespace>` toont alleen events uit de gespecificeerde namespace.
-
-Handige opties:
-- `kubectl get events --sort-by=.metadata.creationTimestamp` - chronologisch gesorteerd
-- `kubectl get events --field-selector type=Warning` - alleen warnings
-- `kubectl get events --watch` - real-time event monitoring
-</details>
-
----
-
-## Praktische Debugging Tips
-
-1. **Kijk altijd eerst naar Events** - dit vertelt je meestal wat er mis is
-2. **Check Resource Requests vs Node Capacity** - voor Pending pods
-3. **Controleer Image Names** - voor ImagePullBackOff
-4. **Bekijk Container Exit Codes** - voor CrashLoopBackOff
-
-Analyseer de verschillende pods en identificeer de oorzaken van hun problemen!
+**Tip**: Gebruik [`kubectl describe pod <naam> -n debugging`](kubectl describe pod <naam> -n debugging) om gedetailleerde events te zien!

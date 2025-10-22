@@ -1,40 +1,60 @@
 #!/bin/bash
 
-# Controleer of de gebruiker pods in debugging namespace heeft bekeken
-# We testen dit door te controleren of de debugging namespace bestaat en pods bevat
+# Controleer of de gebruiker de pod status analyse opdracht correct heeft uitgevoerd
 
-# Controleer of debugging namespace bestaat
-if ! kubectl get namespace debugging &> /dev/null; then
-    echo "Debugging namespace niet gevonden. Zorg ervoor dat de setup correct is uitgevoerd."
+# Controleer of pod-status-analysis ConfigMap bestaat
+if ! kubectl get configmap pod-status-analysis -n default &> /dev/null; then
+    echo "❌ ConfigMap 'pod-status-analysis' niet gevonden in default namespace."
+    echo "💡 Tip: Maak een ConfigMap aan met pod status tellingen uit debugging namespace"
     exit 1
 fi
 
-# Controleer of er pods in debugging namespace zijn
-pod_count=$(kubectl get pods -n debugging --no-headers 2>/dev/null | wc -l)
-if [ "$pod_count" -eq 0 ]; then
-    echo "Geen pods gevonden in debugging namespace. Zorg ervoor dat je 'kubectl get pods -n debugging' hebt uitgevoerd."
+# Controleer of ready-analysis Secret bestaat
+if ! kubectl get secret ready-analysis -n default &> /dev/null; then
+    echo "❌ Secret 'ready-analysis' niet gevonden in default namespace."
+    echo "💡 Tip: Maak een Secret aan met informatie over een not-ready pod"
     exit 1
 fi
 
-# Controleer of er pods met verschillende statussen zijn
-running_pods=$(kubectl get pods -n debugging --no-headers 2>/dev/null | grep -c "Running" || true)
-problem_pods=$(kubectl get pods -n debugging --no-headers 2>/dev/null | grep -E "(CrashLoopBackOff|ImagePullBackOff|Pending|Error)" | wc -l || true)
+# Haal werkelijke waarden op
+actual_running=$(kubectl get pods -n debugging --no-headers 2>/dev/null | grep -c "Running" || echo "0")
+actual_crashloop=$(kubectl get pods -n debugging --no-headers 2>/dev/null | grep -c "CrashLoopBackOff" || echo "0")
+actual_imagepull=$(kubectl get pods -n debugging --no-headers 2>/dev/null | grep -c "ImagePullBackOff" || echo "0")
 
-if [ "$running_pods" -eq 0 ]; then
-    echo "Geen running pods gevonden. Er zou minstens één healthy pod moeten zijn."
+# Haal waarden uit ConfigMap op
+config_running=$(kubectl get configmap pod-status-analysis -n default -o jsonpath='{.data.running-pods}' 2>/dev/null)
+config_crashloop=$(kubectl get configmap pod-status-analysis -n default -o jsonpath='{.data.crashloop-pods}' 2>/dev/null)
+config_imagepull=$(kubectl get configmap pod-status-analysis -n default -o jsonpath='{.data.imagepull-pods}' 2>/dev/null)
+
+# Valideer tellingen
+if [ "$config_running" != "$actual_running" ]; then
+    echo "❌ Running pods telling incorrect. Verwacht: $actual_running, Gevonden: $config_running"
     exit 1
 fi
 
-if [ "$problem_pods" -eq 0 ]; then
-    echo "Geen probleem pods gevonden. Er zouden pods met problemen moeten zijn voor debugging oefening."
+if [ "$config_crashloop" != "$actual_crashloop" ]; then
+    echo "❌ CrashLoopBackOff pods telling incorrect. Verwacht: $actual_crashloop, Gevonden: $config_crashloop"
     exit 1
 fi
 
-# Test of gebruiker wide output kan bekijken
-if ! kubectl get pods -n debugging -o wide &> /dev/null; then
-    echo "Kon pods niet bekijken met -o wide flag."
+if [ "$config_imagepull" != "$actual_imagepull" ]; then
+    echo "❌ ImagePullBackOff pods telling incorrect. Verwacht: $actual_imagepull, Gevonden: $config_imagepull"
     exit 1
 fi
 
-echo "Uitstekend! Je hebt succesvol pod statussen bekeken en begrijpt de verschillende states waarin pods kunnen zijn."
+# Controleer ready-analysis Secret
+pod_name=$(kubectl get secret ready-analysis -n default -o jsonpath='{.data.pod-name}' 2>/dev/null | base64 -d)
+reason=$(kubectl get secret ready-analysis -n default -o jsonpath='{.data.reason}' 2>/dev/null | base64 -d)
+
+if [ -z "$pod_name" ] || [ -z "$reason" ]; then
+    echo "❌ Secret 'ready-analysis' mist vereiste data (pod-name en reason)."
+    exit 1
+fi
+
+echo "✅ Uitstekend! Je hebt pod status analyse beheerst:"
+echo "   - Running pods: $actual_running"
+echo "   - CrashLoopBackOff pods: $actual_crashloop"
+echo "   - ImagePullBackOff pods: $actual_imagepull"
+echo "   - Identified not-ready pod: $pod_name (reason: $reason)"
+echo "✅ Je begrijpt nu pod lifecycle states en het verschil tussen READY en STATUS!"
 exit 0

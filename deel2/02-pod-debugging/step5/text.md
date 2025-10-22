@@ -136,97 +136,44 @@ kubectl logs <pod-name> -n debugging --previous
 kubectl top pods -n debugging
 ```
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Een pod heeft status "Pending" en in de events zie je "Insufficient memory". Wat is de beste oplossing?
+### Opdracht: Complete Debugging Scenario
 
-A) De pod herstarten
-B) De image tag wijzigen
-C) De memory requests verlagen of cluster capacity verhogen
-D) De readiness probe aanpassen
+Je gaat nu een complete debugging workflow uitvoeren voor alle problematische pods.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Analyseer elk type probleem** en documenteer je bevindingen:
+   - ImagePullBackOff pod: Wat is de verkeerde image naam?
+   - Pending pod: Wat is de resource constraint?
+   - CrashLoopBackOff pod: Wat is de crash reden?
+   - OOMKilled pod: Wat is de memory limit?
 
-**Correct antwoord: C**
+2. **Maak een Secret aan** met de naam `debugging-report` die alle problemen documenteert:
 
-"Insufficient memory" betekent dat er niet genoeg memory beschikbaar is op de nodes om aan de pod's memory requests te voldoen. Oplossingen:
-- Memory requests van de pod verlagen
-- Cluster capacity verhogen (meer nodes of nodes met meer memory)
-- Andere pods stoppen om ruimte te maken
+```bash
+kubectl create secret generic debugging-report \
+  --from-literal=imagepull-issue="<verkeerde-image-naam>" \
+  --from-literal=pending-issue="<resource-constraint>" \
+  --from-literal=crash-issue="<crash-reden>" \
+  --from-literal=oom-limit="<memory-limit-waarde>"
+```
 
-Het probleem ligt aan resource scheduling, niet aan de applicatie zelf.
-</details>
+3. **Maak een ConfigMap aan** met de naam `debugging-workflow` die je debugging stappen documenteert:
 
----
+```bash
+kubectl create configmap debugging-workflow \
+  --from-literal=step1="kubectl get pods" \
+  --from-literal=step2="kubectl describe pod" \
+  --from-literal=step3="kubectl logs pod" \
+  --from-literal=step4="kubectl logs pod --previous"
+```
 
-**Vraag 2:** Voor welk type probleem is `kubectl logs <pod> --previous` het meest nuttig?
+### Verificatie
 
-A) ImagePullBackOff
-B) Pending pods
-C) CrashLoopBackOff
-D) Service connectivity issues
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: C**
-
-Voor CrashLoopBackOff is `--previous` cruciaal omdat:
-- De huidige container instantie is mogelijk leeg (net gestart)
-- De vorige instantie bevat de logs van de crash
-- Je kunt de error messages zien die tot de crash hebben geleid
-- Het toont de exit code en stack traces
-
-Voor ImagePullBackOff en Pending pods zijn events belangrijker dan logs.
-</details>
-
----
-
-**Vraag 3:** Een pod toont "0/1 Ready" maar status is "Running". Wat is waarschijnlijk het probleem?
-
-A) De container image bestaat niet
-B) Er is onvoldoende memory
-C) De readiness probe faalt
-D) De pod is aan het crashen
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: C**
-
-"Running" maar "0/1 Ready" betekent:
-- De container is gestart en draait
-- Maar de readiness probe faalt
-- Kubernetes markeert de pod als "not ready"
-- Traffic wordt niet naar deze pod gestuurd
-
-Check de readiness probe configuratie en het health check endpoint van de applicatie.
-</details>
-
----
-
-**Vraag 4:** Welke debugging stap doe je het EERST bij een pod probleem?
-
-A) Logs bekijken
-B) Resource usage controleren
-C) Pod status en events bekijken
-D) In de container inloggen
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: C**
-
-De debugging workflow begint altijd met:
-1. `kubectl get pods` - zie de status
-2. `kubectl describe pod` - bekijk events en configuratie
-3. Dan pas logs, resource usage, etc.
-
-Events vertellen je meestal direct wat er mis is, wat tijd bespaart bij het debuggen.
-</details>
-
----
+De verificatie controleert:
+- ✅ Of je alle probleem types kunt identificeren en diagnosticeren
+- ✅ Of je de complete debugging workflow begrijpt
+- ✅ Of je praktische oplossingen kunt voorstellen
 
 ## Veelvoorkomende Problemen en Oplossingen
 
@@ -238,4 +185,4 @@ Events vertellen je meestal direct wat er mis is, wat tijd bespaart bij het debu
 | OOMKilled | Memory limit overschreden | Verhoog memory limit |
 | 0/1 Ready | Readiness probe faalt | Fix health check endpoint |
 
-Probeer nu alle scenario's te analyseren en de oorzaken te identificeren!
+**Je hebt nu de complete pod debugging workflow beheerst!**

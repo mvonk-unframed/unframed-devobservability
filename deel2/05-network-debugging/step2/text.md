@@ -224,82 +224,38 @@ kubectl get events -n network --field-selector involvedObject.kind=Endpoints
 - Port mismatch tussen service en pods
 - Verkeerde target port configuratie
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Wat zijn endpoints in Kubernetes?
+### Opdracht: Service Endpoint Troubleshooting
 
-A) DNS namen van services
-B) IP adressen en poorten van pods die traffic van een service ontvangen
-C) Externe load balancers
-D) Ingress controllers
+Je gaat nu service endpoint problemen diagnosticeren en repareren.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Identificeer de broken service** die geen endpoints heeft
+2. **Analyseer waarom** er geen endpoints zijn (selector mismatch, pod readiness, etc.)
+3. **Repareer het probleem** door de juiste configuratie aan te passen
 
-**Correct antwoord: B**
+4. **Maak een Secret aan** met de naam `endpoint-diagnosis` die je analyse documenteert:
 
-Endpoints zijn de daadwerkelijke IP adressen en poorten van pods die traffic van een service ontvangen. Ze worden automatisch beheerd door Kubernetes op basis van:
-- Service selectors
-- Pod labels
-- Pod readiness status
+```bash
+kubectl create secret generic endpoint-diagnosis \
+  --from-literal=broken-service="<service-naam>" \
+  --from-literal=problem-type="selector-mismatch/readiness-failure/no-pods" \
+  --from-literal=solution-applied="<wat-je-hebt-gerepareerd>"
+```
 
-Zonder endpoints kan een service geen traffic routeren naar pods.
-</details>
+5. **Valideer de fix** door een ConfigMap aan te maken met de naam `endpoint-validation`:
 
----
+```bash
+kubectl create configmap endpoint-validation \
+  --from-literal=service-has-endpoints="true" \
+  --from-literal=endpoint-count="<aantal-endpoints>"
+```
 
-**Vraag 2:** Waarom zou een pod IP adres niet in de service endpoints staan?
+### Verificatie
 
-A) De pod is te nieuw
-B) De pod faalt zijn readiness probe
-C) De pod heeft geen labels
-D) De service heeft geen ClusterIP
+De verificatie controleert:
+- ✅ Of je service endpoint problemen kunt diagnosticeren
+- ✅ Of je de oorzaak correct hebt geïdentificeerd
+- ✅ Of je het probleem hebt gerepareerd en gevalideerd
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-Een pod wordt niet opgenomen in service endpoints als:
-- **Readiness probe faalt** - pod is niet ready voor traffic
-- Pod labels komen niet overeen met service selector
-- Pod is in een failing state
-
-Readiness probes zijn cruciaal - alleen "ready" pods ontvangen traffic via services.
-</details>
-
----
-
-**Vraag 3:** Hoe repareer je een service die geen endpoints heeft?
-
-A) De service herstarten
-B) Controleer en corrigeer de service selector om overeen te komen met pod labels
-C) De namespace wijzigen
-D) Een nieuwe ClusterIP toewijzen
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-Om een service zonder endpoints te repareren:
-1. **Controleer service selector**: `kubectl get service <name> -o jsonpath='{.spec.selector}'`
-2. **Controleer pod labels**: `kubectl get pods --show-labels`
-3. **Corrigeer mismatch**: Update service selector of pod labels
-4. **Controleer readiness**: Zorg dat pods ready zijn
-
-De meest voorkomende oorzaak is een mismatch tussen selector en labels.
-</details>
-
----
-
-## Wat Heb Je Geleerd?
-
-Je hebt nu:
-- ✅ Endpoints concept begrepen
-- ✅ Service selector problemen geïdentificeerd
-- ✅ Readiness probe impact op endpoints gezien
-- ✅ Een broken service gerepareerd
-- ✅ Manual endpoints aangemaakt
-
-Endpoints zijn cruciaal voor service discovery - zonder endpoints kan een service geen traffic routeren!
+**Tip**: Gebruik [`kubectl get endpoints -n network`](kubectl get endpoints -n network) om te zien welke services geen endpoints hebben!

@@ -68,73 +68,41 @@ Je kunt altijd terug naar de originele default namespace:
 kubectl config set-context --current --namespace=default
 ```{{exec}}
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Welk commando stelt de "webapp" namespace in als je default namespace?
+### Opdracht: Context Management Demonstratie
 
-A) `kubectl set namespace webapp`
-B) `kubectl config set-context --current --namespace=webapp`
-C) `kubectl use namespace webapp`
-D) `kubectl default namespace webapp`
+Je gaat nu demonstreren dat je context management beheerst door een specifieke workflow uit te voeren.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Stel de monitoring namespace in als default**
+2. **Maak een pod aan** in de huidige default namespace (monitoring) met de naam `context-test-pod`
+3. **Verander de default namespace** naar `development`
+4. **Maak een ConfigMap aan** in de nieuwe default namespace met de naam `context-demo`
 
-**Correct antwoord: B**
+**Commando's die je nodig hebt:**
 
-Het correcte commando is:
-`kubectl config set-context --current --namespace=webapp`
+```bash
+# Stap 1: Stel monitoring als default in
+kubectl config set-context --current --namespace=monitoring
 
-Dit wijzigt je huidige kubectl context om de webapp namespace als default te gebruiken. Hierna kun je kubectl commando's uitvoeren zonder de `-n` flag.
-</details>
+# Stap 2: Maak pod aan (zal in monitoring namespace komen)
+kubectl run context-test-pod --image=busybox --command -- sleep 3600
 
----
+# Stap 3: Verander naar development namespace
+kubectl config set-context --current --namespace=development
 
-**Vraag 2:** Wat gebeurt er nadat je een default namespace hebt ingesteld?
+# Stap 4: Maak ConfigMap aan (zal in development namespace komen)
+kubectl create configmap context-demo --from-literal=message="Default namespace changed successfully"
+```
 
-A) Alle namespaces worden samengevoegd
-B) Je kunt alleen nog resources in die namespace bekijken
-C) Kubectl commando's gebruiken automatisch die namespace tenzij je `-n` specificeert
-D) De andere namespaces worden verborgen
+### Verificatie
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+De verificatie controleert:
+- ✅ Of de `context-test-pod` bestaat in de monitoring namespace
+- ✅ Of de `context-demo` ConfigMap bestaat in de development namespace
+- ✅ Of je huidige default namespace correct is ingesteld
 
-**Correct antwoord: C**
-
-Na het instellen van een default namespace:
-- Kubectl commando's gebruiken automatisch die namespace
-- Je kunt nog steeds andere namespaces benaderen met `-n <namespace>`
-- Je kunt nog steeds `--all-namespaces` gebruiken
-- Andere namespaces blijven gewoon bestaan en toegankelijk
-
-Het is gewoon een gemak om niet steeds `-n` te hoeven typen.
-</details>
-
----
-
-**Vraag 3:** Hoe kun je controleren welke namespace momenteel je default is?
-
-A) `kubectl get namespace`
-B) `kubectl config current-context`
-C) `kubectl config get-contexts`
-D) `kubectl config view --minify`
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: C**
-
-`kubectl config get-contexts` toont alle contexts en markeert de huidige context met een `*`. In de NAMESPACE kolom zie je welke namespace is ingesteld als default.
-
-- `kubectl config current-context` toont alleen de context naam
-- `kubectl config view --minify` toont de volledige config maar is minder overzichtelijk
-- `kubectl get namespace` toont alle namespaces maar niet welke de default is
-</details>
-
----
-
-## Waarom is Dit Handig?
+### Waarom is Dit Handig?
 
 Het instellen van een default namespace is handig omdat:
 1. Je minder hoeft te typen

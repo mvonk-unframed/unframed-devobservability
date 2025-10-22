@@ -48,77 +48,41 @@ Om te zien hoe lang pods in hun huidige state zijn:
 kubectl get pods -n debugging --sort-by=.metadata.creationTimestamp
 ```{{exec}}
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Wat betekent de pod status "CrashLoopBackOff"?
+### Opdracht: Pod Status Analyse
 
-A) De pod is succesvol gestart en draait normaal
-B) De pod crasht herhaaldelijk en Kubernetes probeert het steeds opnieuw
-C) De pod wacht op een beschikbare node
-D) De pod kan de container image niet downloaden
+Je gaat nu een analyse maken van pod statussen en deze informatie opslaan voor verificatie.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Tel pods per status** in de debugging namespace:
+   - Hoeveel pods hebben status "Running"?
+   - Hoeveel pods hebben status "CrashLoopBackOff"?
+   - Hoeveel pods hebben status "ImagePullBackOff"?
 
-**Correct antwoord: B**
+2. **Maak een ConfigMap aan** in de `default` namespace met de naam `pod-status-analysis`:
 
-"CrashLoopBackOff" betekent dat:
-- De pod crasht herhaaldelijk
-- Kubernetes probeert automatisch de pod opnieuw te starten
-- Er is een exponential backoff tussen restart pogingen
-- Dit duidt meestal op een probleem in de applicatie code of configuratie
-</details>
+```bash
+# Voorbeeld (vervang met je eigen tellingen):
+kubectl create configmap pod-status-analysis \
+  --from-literal=running-pods=3 \
+  --from-literal=crashloop-pods=2 \
+  --from-literal=imagepull-pods=1
+```
 
----
+3. **Identificeer een pod die "0/1 Ready" is** maar wel "Running" status heeft, en maak een Secret aan met de naam `ready-analysis`:
 
-**Vraag 2:** Wat is het verschil tussen READY en STATUS kolommen?
+```bash
+kubectl create secret generic ready-analysis \
+  --from-literal=pod-name="<naam-van-not-ready-pod>" \
+  --from-literal=reason="readiness-probe-failure"
+```
 
-A) Ze betekenen hetzelfde
-B) READY toont hoeveel containers klaar zijn, STATUS toont de lifecycle state
-C) READY is voor services, STATUS is voor pods
-D) STATUS is belangrijker dan READY
+### Verificatie
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-- **READY**: Toont hoeveel containers ready zijn (bijv. 1/1 = 1 van 1 containers ready)
-- **STATUS**: Toont de huidige lifecycle state (Running, Pending, CrashLoopBackOff, etc.)
-
-Een pod kan "Running" status hebben maar "0/1 Ready" als de readiness probe faalt!
-</details>
-
----
-
-**Vraag 3:** Welke pod status duidt op een probleem met het downloaden van de container image?
-
-A) CrashLoopBackOff
-B) Pending
-C) ImagePullBackOff
-D) OOMKilled
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: C**
-
-"ImagePullBackOff" betekent dat Kubernetes de container image niet kan downloaden. Dit kan komen door:
-- Verkeerde image naam of tag
-- Ontbrekende authenticatie voor private registries
-- Netwerk problemen
-- Image bestaat niet in de registry
-</details>
-
----
-
-## Wat Zie Je?
-
-Analyseer de output en identificeer:
-1. Welke pods draaien normaal (Running)?
-2. Welke pods hebben problemen?
-3. Welke error states zie je?
-4. Hoe lang zijn de pods al in hun huidige state?
+De verificatie controleert:
+- ✅ Of je pod statussen correct hebt geteld
+- ✅ Of je het verschil tussen READY en STATUS begrijpt
+- ✅ Of je problematische pods kunt identificeren
 
 ## Ready vs Status
 

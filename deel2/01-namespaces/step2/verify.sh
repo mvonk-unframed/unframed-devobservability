@@ -1,33 +1,52 @@
 #!/bin/bash
 
-# Controleer of de gebruiker de describe commando's heeft uitgevoerd
-# We testen dit door te controleren of de namespaces correct bestaan en toegankelijk zijn
+# Controleer of de gebruiker de opdrachten correct heeft uitgevoerd
+# 1. Labels toegevoegd aan namespaces
+# 2. ConfigMap aangemaakt met namespace analyse
 
-# Test of gebruiker namespace details kan bekijken
-if ! kubectl describe namespace webapp &> /dev/null; then
-    echo "Kon namespace 'webapp' niet beschrijven. Zorg ervoor dat je 'kubectl describe namespace webapp' hebt uitgevoerd."
+# Controleer of labels zijn toegevoegd aan webapp namespace
+webapp_label=$(kubectl get namespace webapp -o jsonpath='{.metadata.labels.purpose}' 2>/dev/null)
+if [ "$webapp_label" != "frontend" ]; then
+    echo "❌ Label 'purpose=frontend' niet gevonden op webapp namespace."
+    echo "💡 Tip: Gebruik 'kubectl label namespace webapp purpose=frontend'"
     exit 1
 fi
 
-if ! kubectl describe namespace database &> /dev/null; then
-    echo "Kon namespace 'database' niet beschrijven. Zorg ervoor dat je 'kubectl describe namespace database' hebt uitgevoerd."
+# Controleer of labels zijn toegevoegd aan database namespace
+database_label=$(kubectl get namespace database -o jsonpath='{.metadata.labels.purpose}' 2>/dev/null)
+if [ "$database_label" != "backend" ]; then
+    echo "❌ Label 'purpose=backend' niet gevonden op database namespace."
+    echo "💡 Tip: Gebruik 'kubectl label namespace database purpose=backend'"
     exit 1
 fi
 
-# Test of gebruiker YAML output kan bekijken
-if ! kubectl get namespace monitoring -o yaml &> /dev/null; then
-    echo "Kon namespace 'monitoring' niet in YAML formaat bekijken."
+# Controleer of ConfigMap bestaat
+if ! kubectl get configmap namespace-analysis -n default &> /dev/null; then
+    echo "❌ ConfigMap 'namespace-analysis' niet gevonden in default namespace."
+    echo "💡 Tip: Maak een ConfigMap aan met namespace statistieken"
     exit 1
 fi
 
-# Controleer of alle verwachte namespaces bestaan
-expected_namespaces=("webapp" "database" "monitoring" "development" "production")
-for ns in "${expected_namespaces[@]}"; do
-    if ! kubectl get namespace "$ns" &> /dev/null; then
-        echo "Namespace $ns bestaat niet."
-        exit 1
-    fi
-done
+# Controleer ConfigMap inhoud
+total_ns=$(kubectl get configmap namespace-analysis -n default -o jsonpath='{.data.total-namespaces}' 2>/dev/null)
+custom_ns=$(kubectl get configmap namespace-analysis -n default -o jsonpath='{.data.custom-namespaces}' 2>/dev/null)
 
-echo "Uitstekend! Je hebt succesvol namespace details bekeken en begrijpt hoe je gedetailleerde informatie kunt verkrijgen."
+if [ -z "$total_ns" ] || [ -z "$custom_ns" ]; then
+    echo "❌ ConfigMap 'namespace-analysis' mist vereiste data keys."
+    echo "💡 Tip: ConfigMap moet 'total-namespaces' en 'custom-namespaces' keys bevatten"
+    exit 1
+fi
+
+# Valideer of de getallen logisch zijn
+actual_total=$(kubectl get namespaces --no-headers | wc -l)
+if [ "$total_ns" != "$actual_total" ]; then
+    echo "❌ Total namespaces in ConfigMap ($total_ns) komt niet overeen met werkelijk aantal ($actual_total)."
+    echo "💡 Tip: Tel opnieuw met 'kubectl get namespaces'"
+    exit 1
+fi
+
+echo "✅ Uitstekend! Je hebt succesvol:"
+echo "   - Labels toegevoegd aan namespaces (webapp: $webapp_label, database: $database_label)"
+echo "   - ConfigMap aangemaakt met correcte namespace analyse ($total_ns total, $custom_ns custom)"
+echo "   - Namespace metadata management beheerst"
 exit 0

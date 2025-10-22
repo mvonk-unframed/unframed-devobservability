@@ -103,79 +103,48 @@ kubectl logs -n debugging -l app=healthy-app --all-containers=true
 2. Zoek naar initialization errors
 3. Check dependency connections
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Wanneer gebruik je `kubectl logs <pod> --previous`?
+### Opdracht: Log Analyse en Error Identificatie
 
-A) Om logs van alle containers te zien
-B) Om logs van een gecrashte container te bekijken
-C) Om logs met timestamps te zien
-D) Om real-time logs te volgen
+Je gaat nu logs analyseren om de oorzaken van pod problemen te vinden.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Analyseer logs van een CrashLoopBackOff pod**:
+   - Bekijk zowel huidige als previous logs
+   - Identificeer de error message die de crash veroorzaakt
 
-**Correct antwoord: B**
+2. **Maak een Secret aan** met de naam `log-analysis` die je bevindingen documenteert:
 
-`--previous` toont logs van de vorige container instantie, wat cruciaal is voor debugging van:
-- CrashLoopBackOff problemen
-- Containers die zijn herstart
-- OOMKilled containers
+```bash
+kubectl create secret generic log-analysis \
+  --from-literal=crash-pod="<pod-naam>" \
+  --from-literal=error-message="<error-uit-logs>" \
+  --from-literal=restart-count="<aantal-restarts>"
+```
 
-Zonder `--previous` zie je alleen logs van de huidige (mogelijk lege) container instantie.
-</details>
+3. **Zoek een pod met veel log output** en maak een ConfigMap aan met de naam `log-stats`:
 
----
+```bash
+kubectl create configmap log-stats \
+  --from-literal=verbose-pod="<pod-naam>" \
+  --from-literal=log-lines="<aantal-regels-laatste-50>"
+```
 
-**Vraag 2:** Wat doet de `-f` flag in `kubectl logs -f <pod>`?
+### Bonus Opdracht: Multi-container Log Analyse
 
-A) Filtert logs op errors
-B) Toont logs van alle containers
-C) Volgt logs in real-time (follow)
-D) Formatteert logs met timestamps
+Als er multi-container pods zijn, analyseer deze en maak een Secret aan met de naam `container-analysis`:
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+```bash
+kubectl create secret generic container-analysis \
+  --from-literal=multi-pod="<pod-naam>" \
+  --from-literal=container-count="<aantal-containers>"
+```
 
-**Correct antwoord: C**
+### Verificatie
 
-De `-f` (follow) flag toont logs in real-time, vergelijkbaar met `tail -f` in Linux. Dit is handig voor:
-- Live debugging van draaiende applicaties
-- Monitoring van applicatie gedrag
-- Het zien van nieuwe log entries terwijl ze geschreven worden
+De verificatie controleert:
+- ✅ Of je logs kunt analyseren en error messages kunt vinden
+- ✅ Of je previous logs kunt bekijken voor crashed containers
+- ✅ Of je multi-container pod logs kunt onderscheiden
 
-Gebruik Ctrl+C om te stoppen met volgen.
-</details>
-
----
-
-**Vraag 3:** Hoe bekijk je logs van een specifieke container in een multi-container pod?
-
-A) `kubectl logs <pod> --container <container-name>`
-B) `kubectl logs <pod> -c <container-name>`
-C) `kubectl logs <pod>/<container-name>`
-D) Zowel A als B zijn correct
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: D**
-
-Beide opties werken:
-- `kubectl logs <pod> --container <container-name>` (lange versie)
-- `kubectl logs <pod> -c <container-name>` (korte versie)
-
-Voor multi-container pods moet je de container specificeren, anders krijg je een error. Je kunt ook `--all-containers=true` gebruiken om logs van alle containers te zien.
-</details>
-
----
-
-## Log Analyse Tips
-
-1. **Altijd --previous gebruiken** voor crashed containers
-2. **Timestamps helpen** bij het correleren van events
-3. **Grep is je vriend** voor het vinden van specifieke errors
-4. **Tail beperkt output** voor grote log files
-5. **Follow (-f) voor real-time** debugging
-
-Analyseer de logs van de verschillende pods en probeer de oorzaken van problemen te identificeren!
+**Tip**: Gebruik [`kubectl logs <pod> --previous -n debugging`](kubectl logs <pod> --previous -n debugging) voor crashed containers!

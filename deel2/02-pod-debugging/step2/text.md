@@ -69,79 +69,40 @@ Let op de volgende signalen:
 - **Requests**: Gegarandeerde resources
 - **Limits**: Maximum toegestane resources
 
-## Multiple Choice Vragen
+## 🎯 Praktische Opdracht
 
-**Vraag 1:** Wat betekent "1000m" in CPU metrics?
+### Opdracht: Resource Monitoring Analyse
 
-A) 1000 megabytes
-B) 1 CPU core
-C) 1000 milliseconden
-D) 1000 memory units
+Je gaat nu resource verbruik analyseren en de resultaten documenteren.
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
+1. **Vind de pod met het hoogste CPU verbruik** in de debugging namespace
+2. **Vind de pod met het hoogste memory verbruik** in de debugging namespace
+3. **Maak een Secret aan** met de naam `resource-analysis` die deze informatie bevat:
 
-**Correct antwoord: B**
+```bash
+# Vervang met de echte pod namen die je vindt:
+kubectl create secret generic resource-analysis \
+  --from-literal=highest-cpu-pod="<pod-naam>" \
+  --from-literal=highest-memory-pod="<pod-naam>" \
+  --from-literal=total-node-count="<aantal-nodes>"
+```
 
-CPU wordt gemeten in millicores (m):
-- 1000m = 1 CPU core
-- 500m = 0.5 CPU core
-- 100m = 0.1 CPU core
+### Bonus Opdracht: Resource Limits Identificatie
 
-Dit is een standaard manier om CPU resources te specificeren in Kubernetes.
-</details>
+Zoek een pod die resource limits heeft ingesteld en maak een ConfigMap aan met de naam `limits-analysis`:
 
----
+```bash
+kubectl create configmap limits-analysis \
+  --from-literal=pod-with-limits="<pod-naam>" \
+  --from-literal=cpu-limit="<cpu-limit-waarde>" \
+  --from-literal=memory-limit="<memory-limit-waarde>"
+```
 
-**Vraag 2:** Wat is het verschil tussen resource "requests" en "limits"?
+### Verificatie
 
-A) Requests zijn maximaal, limits zijn minimaal
-B) Requests zijn gegarandeerde resources, limits zijn maximum toegestaan
-C) Ze betekenen hetzelfde
-D) Requests zijn voor CPU, limits zijn voor memory
+De verificatie controleert:
+- ✅ Of je resource monitoring commando's hebt gebruikt
+- ✅ Of je de pods met hoogste resource verbruik correct hebt geïdentificeerd
+- ✅ Of je resource limits kunt vinden en interpreteren
 
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: B**
-
-- **Requests**: Gegarandeerde resources die de pod krijgt (gebruikt voor scheduling)
-- **Limits**: Maximum resources dat de pod mag gebruiken
-
-Als een pod zijn CPU limit overschrijdt wordt het "throttled". Als het zijn memory limit overschrijdt wordt het "OOMKilled".
-</details>
-
----
-
-**Vraag 3:** Welk commando toont pods gesorteerd op memory verbruik?
-
-A) `kubectl top pods --sort-by=memory`
-B) `kubectl get pods --sort-by=memory`
-C) `kubectl top pods --order-by=memory`
-D) `kubectl describe pods --sort-memory`
-
-<details>
-<summary>Klik hier voor het antwoord</summary>
-
-**Correct antwoord: A**
-
-`kubectl top pods --sort-by=memory` sorteert pods op memory verbruik van laag naar hoog.
-
-Je kunt ook sorteren op:
-- `--sort-by=cpu` voor CPU verbruik
-- `--sort-by=name` voor pod naam
-
-Let op: `kubectl top` vereist dat metrics-server draait in het cluster.
-</details>
-
----
-
-## Praktische Analyse
-
-Analyseer de output en identificeer:
-1. Welke pods gebruiken de meeste CPU?
-2. Welke pods gebruiken de meeste memory?
-3. Zijn er pods die hun limits benaderen?
-4. Zijn er nodes die overbelast zijn?
-
-**Tip**: Als `kubectl top` niet werkt, is metrics-server mogelijk nog niet klaar. Wacht een paar minuten en probeer opnieuw.
+**Tip**: Gebruik [`kubectl top pods -n debugging --sort-by=cpu`](kubectl top pods -n debugging --sort-by=cpu) en [`kubectl top pods -n debugging --sort-by=memory`](kubectl top pods -n debugging --sort-by=memory)!
