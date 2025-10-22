@@ -11,6 +11,7 @@ current_namespace=${current_namespace:-default}
 
 # Controleer of het overeenkomt
 if [[ "$current_namespace" == "$expected_namespace" ]]; then
+    kubectl config set-context --current --namespace=default
     exit 0
 else
     exit 1
