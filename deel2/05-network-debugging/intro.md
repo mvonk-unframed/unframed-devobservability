@@ -4,7 +4,7 @@ Welkom bij de Network Debugging training! In dit scenario leer je hoe je systema
 
 ## Wat ga je leren?
 
-In de volgende 15 minuten ga je:
+In dit hoofstuk ga je leren:
 - De network flow van extern naar pod begrijpen
 - Systematisch debuggen van elke stap in de flow
 - Veelvoorkomende problemen identificeren en oplossen
@@ -53,7 +53,5 @@ Dit is een klassiek network probleem dat je gaat oplossen door systematisch elke
 - Pods zijn niet ready
 - Readiness probe faalt
 - Verkeerde labels
-
-<br>
 
 **Laten we systematisch beginnen met network debugging!**

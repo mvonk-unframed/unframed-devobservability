@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Controleer of de gebruiker service discovery heeft verkend
+# Controleer of de gebruiker ingress analyse heeft uitgevoerd
 
 # Controleer of network namespace bestaat
 if ! kubectl get namespace network &> /dev/null; then
@@ -8,101 +8,108 @@ if ! kubectl get namespace network &> /dev/null; then
     exit 1
 fi
 
-# Controleer of er services zijn in network namespace
-service_count=$(kubectl get services -n network --no-headers 2>/dev/null | wc -l)
-if [ "$service_count" -eq 0 ]; then
-    echo "Geen services gevonden in network namespace."
+# Controleer of ingress resources bestaan
+ingress_count=$(kubectl get ingress -n network --no-headers 2>/dev/null | wc -l)
+if [ "$ingress_count" -eq 0 ]; then
+    echo "Geen ingress resources gevonden."
     exit 1
 fi
 
-# Test of debug-pod bestaat en running is
-debug_pod_status=$(kubectl get pod debug-pod -n network --no-headers 2>/dev/null | awk '{print $3}')
-if [ "$debug_pod_status" != "Running" ]; then
-    echo "Debug pod is niet running. Status: $debug_pod_status"
-    # Niet kritiek, maar waarschuwing
+# Controleer of ingress-nginx namespace bestaat
+if ! kubectl get namespace ingress-nginx &> /dev/null; then
+    echo "Ingress-nginx namespace niet gevonden."
+    exit 1
 fi
 
-# Controleer of frontend-service bestaat
+# Test of frontend-ingress bestaat
+if ! kubectl get ingress frontend-ingress -n network &> /dev/null; then
+    echo "Frontend ingress niet gevonden."
+    exit 1
+fi
+
+# Test of broken-ingress bestaat
+if ! kubectl get ingress broken-ingress -n network &> /dev/null; then
+    echo "Broken ingress niet gevonden."
+    exit 1
+fi
+
+# Test of api-ingress bestaat
+if ! kubectl get ingress api-ingress -n network &> /dev/null; then
+    echo "API ingress niet gevonden."
+    exit 1
+fi
+
+# Controleer ingress backend services
+frontend_backend=$(kubectl get ingress frontend-ingress -n network -o jsonpath='{.spec.rules[0].http.paths[0].backend.service.name}' 2>/dev/null)
+if [ "$frontend_backend" != "frontend-service" ]; then
+    echo "Frontend ingress backend service is niet correct."
+    exit 1
+fi
+
+api_backend=$(kubectl get ingress api-ingress -n network -o jsonpath='{.spec.rules[0].http.paths[0].backend.service.name}' 2>/dev/null)
+if [ "$api_backend" != "backend-service" ]; then
+    echo "API ingress backend service is niet correct."
+    exit 1
+fi
+
+# Controleer of backend services bestaan
 if ! kubectl get service frontend-service -n network &> /dev/null; then
-    echo "Frontend service niet gevonden."
+    echo "Frontend service (ingress backend) niet gevonden."
     exit 1
 fi
 
-# Controleer of frontend-service endpoints heeft
-frontend_endpoints=$(kubectl get endpoints frontend-service -n network --no-headers 2>/dev/null | awk '{print $2}')
-if [ -z "$frontend_endpoints" ] || [ "$frontend_endpoints" = "<none>" ]; then
-    echo "Frontend service heeft geen endpoints."
+if ! kubectl get service backend-service -n network &> /dev/null; then
+    echo "Backend service (ingress backend) niet gevonden."
     exit 1
 fi
 
-# Controleer of broken-service geen endpoints heeft (dit is verwacht)
-broken_endpoints=$(kubectl get endpoints broken-service -n network --no-headers 2>/dev/null | awk '{print $2}')
-if [ "$broken_endpoints" != "<none>" ] && [ -n "$broken_endpoints" ]; then
-    echo "Broken service zou geen endpoints moeten hebben."
+# Controleer broken ingress backend (zou nonexistent-service moeten zijn)
+broken_backend=$(kubectl get ingress broken-ingress -n network -o jsonpath='{.spec.rules[0].http.paths[0].backend.service.name}' 2>/dev/null)
+if [ "$broken_backend" = "frontend-service" ]; then
+    echo "Broken ingress is al gerepareerd - dit zou voor de oefening nog broken moeten zijn."
+    # Niet kritiek, kan al gerepareerd zijn
+fi
+
+# Test ingress controller service
+if ! kubectl get service ingress-nginx-controller -n ingress-nginx &> /dev/null; then
+    echo "Ingress controller service niet gevonden."
     exit 1
 fi
 
-# Test DNS resolution (als debug pod running is)
-if [ "$debug_pod_status" = "Running" ]; then
-    if ! kubectl exec debug-pod -n network -- nslookup frontend-service.network.svc.cluster.local &> /dev/null; then
-        echo "DNS resolution voor frontend-service faalt."
-        exit 1
-    fi
-    
-    # Test korte DNS naam
-    if ! kubectl exec debug-pod -n network -- nslookup frontend-service &> /dev/null; then
-        echo "Korte DNS naam resolution faalt."
-        exit 1
-    fi
-fi
-
-# Controleer of NodePort service bestaat
-if ! kubectl get service frontend-nodeport -n network &> /dev/null; then
-    echo "Frontend NodePort service niet gevonden."
+# Test ingress controller IP
+ingress_ip=$(kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
+if [ -z "$ingress_ip" ]; then
+    echo "Kon ingress controller IP niet ophalen."
     exit 1
 fi
 
-# Controleer NodePort service type
-nodeport_type=$(kubectl get service frontend-nodeport -n network -o jsonpath='{.spec.type}' 2>/dev/null)
-if [ "$nodeport_type" != "NodePort" ]; then
-    echo "Frontend service is niet van type NodePort."
+# Controleer poort configuratie
+frontend_ingress_port=$(kubectl get ingress frontend-ingress -n network -o jsonpath='{.spec.rules[0].http.paths[0].backend.service.port.number}' 2>/dev/null)
+frontend_service_port=$(kubectl get service frontend-service -n network -o jsonpath='{.spec.ports[0].port}' 2>/dev/null)
+
+if [ "$frontend_ingress_port" != "$frontend_service_port" ]; then
+    echo "Frontend ingress en service poorten matchen niet."
     exit 1
 fi
 
-# Controleer of er verschillende service types zijn
-clusterip_count=$(kubectl get services -n network -o jsonpath='{.items[?(@.spec.type=="ClusterIP")].metadata.name}' 2>/dev/null | wc -w)
-nodeport_count=$(kubectl get services -n network -o jsonpath='{.items[?(@.spec.type=="NodePort")].metadata.name}' 2>/dev/null | wc -w)
-
-if [ "$clusterip_count" -eq 0 ]; then
-    echo "Geen ClusterIP services gevonden."
+# Controleer of ingress-analysis secret is aangemaakt
+if ! kubectl get secret ingress-analysis -n network &> /dev/null; then
+    echo "Ingress-analysis secret niet aangemaakt."
     exit 1
 fi
 
-if [ "$nodeport_count" -eq 0 ]; then
-    echo "Geen NodePort services gevonden."
+# Test ingress host configuratie
+frontend_host=$(kubectl get ingress frontend-ingress -n network -o jsonpath='{.spec.rules[0].host}' 2>/dev/null)
+if [ "$frontend_host" != "frontend.local" ]; then
+    echo "Frontend ingress host niet correct geconfigureerd."
     exit 1
 fi
 
-# Controleer of pods de juiste labels hebben
-frontend_pods=$(kubectl get pods -n network -l app=frontend --no-headers 2>/dev/null | wc -l)
-if [ "$frontend_pods" -eq 0 ]; then
-    echo "Geen frontend pods met juiste labels gevonden."
+api_host=$(kubectl get ingress api-ingress -n network -o jsonpath='{.spec.rules[0].host}' 2>/dev/null)
+if [ "$api_host" != "api.local" ]; then
+    echo "API ingress host niet correct geconfigureerd."
     exit 1
 fi
 
-# Controleer of broken-app pods bestaan maar service selector verkeerd is
-broken_pods=$(kubectl get pods -n network -l app=broken-app --no-headers 2>/dev/null | wc -l)
-if [ "$broken_pods" -eq 0 ]; then
-    echo "Geen broken-app pods gevonden."
-    exit 1
-fi
-
-# Controleer broken service selector
-broken_selector=$(kubectl get service broken-service -n network -o jsonpath='{.spec.selector.app}' 2>/dev/null)
-if [ "$broken_selector" = "broken-app" ]; then
-    echo "Broken service selector is correct - dit zou verkeerd moeten zijn voor de oefening."
-    exit 1
-fi
-
-echo "Uitstekend! Je hebt service discovery verkend en begrijpt hoe services, endpoints en DNS resolution werken in Kubernetes."
+echo "Uitstekend! Je hebt ingress analyse uitgevoerd en begrijpt hoe ingress gekoppeld is aan services en poorten."
 exit 0

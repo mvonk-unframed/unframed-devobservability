@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Controleer of de gebruiker pod-to-service connectivity heeft getest
+# Controleer of de gebruiker pod analyse heeft uitgevoerd
 
 # Controleer of network namespace bestaat
 if ! kubectl get namespace network &> /dev/null; then
@@ -8,129 +8,112 @@ if ! kubectl get namespace network &> /dev/null; then
     exit 1
 fi
 
-# Controleer of debug-pod en client-pod bestaan
-debug_pod_status=$(kubectl get pod debug-pod -n network --no-headers 2>/dev/null | awk '{print $3}')
-client_pod_status=$(kubectl get pod client-pod -n network --no-headers 2>/dev/null | awk '{print $3}')
-
-if [ "$debug_pod_status" != "Running" ]; then
-    echo "Debug pod is niet running. Status: $debug_pod_status"
+# Test of gebruiker pods kan bekijken
+if ! kubectl get pods -n network &> /dev/null; then
+    echo "Kon pods niet bekijken."
     exit 1
 fi
 
-if [ "$client_pod_status" != "Running" ]; then
-    echo "Client pod is niet running. Status: $client_pod_status"
+# Controleer pod status
+frontend_pods_running=$(kubectl get pods -n network -l app=frontend --no-headers 2>/dev/null | grep "Running" | wc -l)
+if [ "$frontend_pods_running" -eq 0 ]; then
+    echo "Geen frontend pods running."
     exit 1
 fi
 
-# Test DNS resolution
-if ! kubectl exec debug-pod -n network -- nslookup frontend-service.network.svc.cluster.local &> /dev/null; then
-    echo "DNS resolution voor frontend-service faalt."
+backend_pods_running=$(kubectl get pods -n network -l app=backend --no-headers 2>/dev/null | grep "Running" | wc -l)
+if [ "$backend_pods_running" -eq 0 ]; then
+    echo "Geen backend pods running."
     exit 1
 fi
 
-# Test basic HTTP connectivity
-if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://frontend-service.network.svc.cluster.local &> /dev/null; then
-    echo "HTTP connectivity naar frontend-service faalt."
+# Controleer pod readiness
+frontend_pods_ready=$(kubectl get pods -n network -l app=frontend --no-headers 2>/dev/null | grep "1/1" | wc -l)
+if [ "$frontend_pods_ready" -eq 0 ]; then
+    echo "Geen frontend pods ready."
     exit 1
 fi
 
-# Test backend service connectivity op juiste port
-if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://backend-service.network.svc.cluster.local:8080 &> /dev/null; then
-    echo "Connectivity naar backend-service op port 8080 faalt."
+backend_pods_ready=$(kubectl get pods -n network -l app=backend --no-headers 2>/dev/null | grep "1/1" | wc -l)
+if [ "$backend_pods_ready" -eq 0 ]; then
+    echo "Geen backend pods ready."
     exit 1
 fi
 
-# Test database port connectivity
-if ! kubectl exec debug-pod -n network -- nc -zv database-service.network.svc.cluster.local 5432 &> /dev/null; then
-    echo "Database port connectivity faalt."
-    exit 1
+# Controleer failing-readiness pods (zouden niet ready moeten zijn)
+failing_pods_not_ready=$(kubectl get pods -n network -l app=failing-readiness --no-headers 2>/dev/null | grep "0/1" | wc -l)
+if [ "$failing_pods_not_ready" -eq 0 ]; then
+    echo "Failing-readiness pods zijn ready - dit zou niet moeten (tenzij al gerepareerd)."
+    # Niet kritiek, kan al gerepareerd zijn
 fi
 
-# Test client pod connectivity
-if ! kubectl exec client-pod -n network -- curl -s --connect-timeout 5 http://frontend-service.network.svc.cluster.local &> /dev/null; then
-    echo "Client pod connectivity naar frontend-service faalt."
-    exit 1
+# Test readiness probe configuratie
+failing_readiness_probe=$(kubectl get pods -n network -l app=failing-readiness -o jsonpath='{.items[0].spec.containers[0].readinessProbe.httpGet.path}' 2>/dev/null)
+if [ "$failing_readiness_probe" = "/" ]; then
+    echo "Failing-readiness probe is al gerepareerd naar '/'."
+    # Dit is goed, betekent dat reparatie is toegepast
 fi
 
-# Test cross-namespace connectivity
-if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://kubernetes.default.svc.cluster.local &> /dev/null; then
-    echo "Cross-namespace connectivity faalt."
-    exit 1
-fi
-
-# Controleer of services de juiste endpoints hebben
-frontend_endpoints=$(kubectl get endpoints frontend-service -n network --no-headers 2>/dev/null | awk '{print $2}')
-if [ -z "$frontend_endpoints" ] || [ "$frontend_endpoints" = "<none>" ]; then
-    echo "Frontend service heeft geen endpoints."
-    exit 1
-fi
-
-backend_endpoints=$(kubectl get endpoints backend-service -n network --no-headers 2>/dev/null | awk '{print $2}')
-if [ -z "$backend_endpoints" ] || [ "$backend_endpoints" = "<none>" ]; then
-    echo "Backend service heeft geen endpoints."
-    exit 1
-fi
-
-# Test direct pod IP connectivity
+# Test pod IP connectiviteit
 frontend_pod_ip=$(kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].status.podIP}' 2>/dev/null)
-if [ -n "$frontend_pod_ip" ]; then
-    if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://$frontend_pod_ip:80 &> /dev/null; then
-        echo "Direct pod IP connectivity faalt."
-        exit 1
-    fi
-else
+if [ -z "$frontend_pod_ip" ]; then
     echo "Kon frontend pod IP niet ophalen."
     exit 1
 fi
 
-# Test of broken-service nu werkt (na reparatie in vorige stap)
-if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://broken-service.network.svc.cluster.local &> /dev/null; then
-    echo "Broken service connectivity faalt nog steeds."
+backend_pod_ip=$(kubectl get pods -n network -l app=backend -o jsonpath='{.items[0].status.podIP}' 2>/dev/null)
+if [ -z "$backend_pod_ip" ]; then
+    echo "Kon backend pod IP niet ophalen."
     exit 1
 fi
 
-# Test failing-readiness service (zou moeten falen of geen endpoints hebben)
-failing_endpoints=$(kubectl get endpoints failing-readiness-service -n network --no-headers 2>/dev/null | awk '{print $2}')
-if [ "$failing_endpoints" != "<none>" ] && [ -n "$failing_endpoints" ]; then
-    # Als er endpoints zijn, test connectivity
-    kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://failing-readiness-service.network.svc.cluster.local &> /dev/null
-    # Dit kan falen, wat verwacht is
-fi
-
-# Test service discovery via environment variables
-env_services=$(kubectl exec debug-pod -n network -- env 2>/dev/null | grep -c "_SERVICE_" || true)
-if [ "$env_services" -eq 0 ]; then
-    echo "Geen service environment variables gevonden."
-    # Dit is niet kritiek, hangt af van wanneer pod is gestart
-fi
-
-# Test load balancing door meerdere requests
-success_count=0
-for i in {1..3}; do
-    if kubectl exec debug-pod -n network -- curl -s --connect-timeout 3 http://frontend-service &> /dev/null; then
-        ((success_count++))
-    fi
-done
-
-if [ "$success_count" -eq 0 ]; then
-    echo "Alle load balancing tests faalden."
+# Test pod logs (moeten beschikbaar zijn)
+if ! kubectl logs $(kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].metadata.name}') -n network --tail=1 &> /dev/null; then
+    echo "Kon frontend pod logs niet ophalen."
     exit 1
 fi
 
-# Test NodePort connectivity (intern)
-node_ip=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}' 2>/dev/null)
-if [ -n "$node_ip" ]; then
-    if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://$node_ip:30080 &> /dev/null; then
-        echo "NodePort connectivity faalt."
-        # Dit is niet kritiek, NodePort kan externe toegang vereisen
+# Test pod events
+pod_events=$(kubectl get events -n network --field-selector involvedObject.kind=Pod --no-headers 2>/dev/null | wc -l)
+if [ "$pod_events" -eq 0 ]; then
+    echo "Geen pod events gevonden."
+    # Niet kritiek, events kunnen verlopen zijn
+fi
+
+# Controleer of failing-readiness deployment is gerepareerd
+if kubectl get deployment failing-readiness -n network &> /dev/null; then
+    deployment_ready=$(kubectl get deployment failing-readiness -n network --no-headers 2>/dev/null | awk '{print $2}' | grep "1/1" | wc -l)
+    if [ "$deployment_ready" -eq 1 ]; then
+        echo "Failing-readiness deployment is succesvol gerepareerd."
     fi
 fi
 
-# Test of pods network interfaces hebben
-if ! kubectl exec debug-pod -n network -- ip addr show eth0 &> /dev/null; then
-    echo "Pod network interface niet gevonden."
+# Controleer of pod-analysis secret is aangemaakt
+if ! kubectl get secret pod-analysis -n network &> /dev/null; then
+    echo "Pod-analysis secret niet aangemaakt."
     exit 1
 fi
 
-echo "Fantastisch! Je hebt pod-to-service connectivity getest en begrijpt hoe network communication werkt in Kubernetes."
+# Test directe pod connectiviteit (als debug pod running is)
+debug_pod_status=$(kubectl get pod debug-pod -n network --no-headers 2>/dev/null | awk '{print $3}')
+if [ "$debug_pod_status" = "Running" ]; then
+    if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://$frontend_pod_ip &> /dev/null; then
+        echo "Directe pod connectiviteit naar frontend faalt."
+        exit 1
+    fi
+    
+    if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://$backend_pod_ip &> /dev/null; then
+        echo "Directe pod connectiviteit naar backend faalt."
+        exit 1
+    fi
+fi
+
+# Controleer pod restart count (zou laag moeten zijn)
+frontend_restarts=$(kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].status.containerStatuses[0].restartCount}' 2>/dev/null)
+if [ "$frontend_restarts" -gt 5 ]; then
+    echo "Frontend pod heeft te veel restarts: $frontend_restarts"
+    # Niet kritiek, maar waarschuwing
+fi
+
+echo "Uitstekend! Je hebt pod analyse uitgevoerd en begrijpt pod status en readiness in Kubernetes."
 exit 0

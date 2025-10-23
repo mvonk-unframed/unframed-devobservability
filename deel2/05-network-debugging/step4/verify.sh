@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Controleer of de gebruiker ingress en load balancer debugging heeft uitgevoerd
+# Controleer of de gebruiker de praktische troubleshooting oefening heeft voltooid
 
 # Controleer of network namespace bestaat
 if ! kubectl get namespace network &> /dev/null; then
@@ -8,47 +8,10 @@ if ! kubectl get namespace network &> /dev/null; then
     exit 1
 fi
 
-# Controleer of ingress resources bestaan
-ingress_count=$(kubectl get ingress -n network --no-headers 2>/dev/null | wc -l)
-if [ "$ingress_count" -eq 0 ]; then
-    echo "Geen ingress resources gevonden."
-    exit 1
-fi
-
-# Controleer of ingress-nginx namespace bestaat
-if ! kubectl get namespace ingress-nginx &> /dev/null; then
-    echo "Ingress-nginx namespace niet gevonden."
-    exit 1
-fi
-
-# Controleer of ingress controller pods draaien
-controller_pods=$(kubectl get pods -n ingress-nginx -l app.kubernetes.io/component=controller --no-headers 2>/dev/null | wc -l)
-if [ "$controller_pods" -eq 0 ]; then
-    echo "Geen ingress controller pods gevonden."
-    exit 1
-fi
-
-# Test of frontend-ingress bestaat
-if ! kubectl get ingress frontend-ingress -n network &> /dev/null; then
-    echo "Frontend ingress niet gevonden."
-    exit 1
-fi
-
-# Test of broken-ingress bestaat
-if ! kubectl get ingress broken-ingress -n network &> /dev/null; then
-    echo "Broken ingress niet gevonden."
-    exit 1
-fi
-
-# Test of api-ingress bestaat
-if ! kubectl get ingress api-ingress -n network &> /dev/null; then
-    echo "API ingress niet gevonden."
-    exit 1
-fi
-
-# Controleer ingress controller service
-if ! kubectl get service ingress-nginx-controller -n ingress-nginx &> /dev/null; then
-    echo "Ingress controller service niet gevonden."
+# Test of debug pod running is voor connectivity tests
+debug_pod_status=$(kubectl get pod debug-pod -n network --no-headers 2>/dev/null | awk '{print $3}')
+if [ "$debug_pod_status" != "Running" ]; then
+    echo "Debug pod is niet running voor troubleshooting tests."
     exit 1
 fi
 
@@ -59,89 +22,22 @@ if [ -z "$ingress_ip" ]; then
     exit 1
 fi
 
-# Test debug pod status
-debug_pod_status=$(kubectl get pod debug-pod -n network --no-headers 2>/dev/null | awk '{print $3}')
-if [ "$debug_pod_status" != "Running" ]; then
-    echo "Debug pod is niet running voor ingress testing."
-    exit 1
-fi
+# Test complete connectivity flow na troubleshooting
+echo "Testing complete network flow na troubleshooting..."
 
-# Test frontend ingress connectivity
+# Test frontend flow (Ingress → Service → Pod)
 if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 -H "Host: frontend.local" http://$ingress_ip &> /dev/null; then
-    echo "Frontend ingress connectivity faalt."
+    echo "Frontend network flow faalt na troubleshooting."
     exit 1
 fi
 
-# Test API ingress connectivity
+# Test API flow
 if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 -H "Host: api.local" http://$ingress_ip/api &> /dev/null; then
-    echo "API ingress connectivity faalt."
+    echo "API network flow faalt na troubleshooting."
     exit 1
 fi
 
-# Test broken ingress (zou moeten falen of nu werken als gerepareerd)
-kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 -H "Host: broken.local" http://$ingress_ip &> /dev/null
-broken_ingress_result=$?
-
-# Controleer of TLS secret is aangemaakt (als TLS ingress is gemaakt)
-if kubectl get secret secure-tls -n network &> /dev/null; then
-    # Test TLS ingress
-    if ! kubectl get ingress secure-ingress -n network &> /dev/null; then
-        echo "Secure ingress niet gevonden terwijl TLS secret wel bestaat."
-        exit 1
-    fi
-    
-    # Test HTTPS connectivity
-    kubectl exec debug-pod -n network -- curl -s -k --connect-timeout 5 -H "Host: secure.local" https://$ingress_ip &> /dev/null
-fi
-
-# Test NodePort service
-if ! kubectl get service frontend-nodeport -n network &> /dev/null; then
-    echo "Frontend NodePort service niet gevonden."
-    exit 1
-fi
-
-# Controleer NodePort configuratie
-nodeport=$(kubectl get service frontend-nodeport -n network -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
-if [ "$nodeport" != "30080" ]; then
-    echo "NodePort heeft niet de verwachte waarde 30080."
-    exit 1
-fi
-
-# Test NodePort connectivity
-node_ip=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}' 2>/dev/null)
-if [ -n "$node_ip" ]; then
-    kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://$node_ip:30080 &> /dev/null
-    # Dit kan falen afhankelijk van cluster setup, dus niet kritiek
-fi
-
-# Controleer ingress backend services bestaan
-frontend_service_exists=$(kubectl get service frontend-service -n network &> /dev/null && echo "true" || echo "false")
-backend_service_exists=$(kubectl get service backend-service -n network &> /dev/null && echo "true" || echo "false")
-
-if [ "$frontend_service_exists" != "true" ]; then
-    echo "Frontend service bestaat niet voor ingress backend."
-    exit 1
-fi
-
-if [ "$backend_service_exists" != "true" ]; then
-    echo "Backend service bestaat niet voor ingress backend."
-    exit 1
-fi
-
-# Test of ingress rules correct zijn geconfigureerd
-frontend_ingress_host=$(kubectl get ingress frontend-ingress -n network -o jsonpath='{.spec.rules[0].host}' 2>/dev/null)
-if [ "$frontend_ingress_host" != "frontend.local" ]; then
-    echo "Frontend ingress host niet correct geconfigureerd."
-    exit 1
-fi
-
-api_ingress_host=$(kubectl get ingress api-ingress -n network -o jsonpath='{.spec.rules[0].host}' 2>/dev/null)
-if [ "$api_ingress_host" != "api.local" ]; then
-    echo "API ingress host niet correct geconfigureerd."
-    exit 1
-fi
-
-# Test of broken ingress is gerepareerd (als patch is toegepast)
+# Test of broken ingress is gerepareerd
 broken_backend_service=$(kubectl get ingress broken-ingress -n network -o jsonpath='{.spec.rules[0].http.paths[0].backend.service.name}' 2>/dev/null)
 if [ "$broken_backend_service" = "frontend-service" ]; then
     # Ingress is gerepareerd, test connectivity
@@ -149,7 +45,91 @@ if [ "$broken_backend_service" = "frontend-service" ]; then
         echo "Gerepareerde broken ingress werkt nog steeds niet."
         exit 1
     fi
+    echo "✅ Broken ingress succesvol gerepareerd."
+else
+    echo "❌ Broken ingress is niet gerepareerd."
+    exit 1
 fi
 
-echo "Uitstekend! Je hebt ingress en load balancer debugging beheerst en begrijpt hoe externe toegang tot Kubernetes services werkt."
+# Test of failing-readiness deployment is gerepareerd
+failing_ready_pods=$(kubectl get pods -n network -l app=failing-readiness --no-headers 2>/dev/null | grep "1/1" | wc -l)
+if [ "$failing_ready_pods" -gt 0 ]; then
+    echo "✅ Failing-readiness pods zijn nu ready."
+    
+    # Test of service nu endpoints heeft
+    failing_endpoints=$(kubectl get endpoints failing-readiness-service -n network --no-headers 2>/dev/null | awk '{print $2}')
+    if [ "$failing_endpoints" != "<none>" ] && [ -n "$failing_endpoints" ]; then
+        echo "✅ Failing-readiness service heeft nu endpoints."
+    fi
+else
+    echo "❌ Failing-readiness pods zijn nog steeds niet ready."
+    exit 1
+fi
+
+# Test service connectivity na reparaties
+if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://frontend-service &> /dev/null; then
+    echo "Service connectivity naar frontend faalt."
+    exit 1
+fi
+
+if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://backend-service:8080 &> /dev/null; then
+    echo "Service connectivity naar backend faalt."
+    exit 1
+fi
+
+# Test of alle services endpoints hebben
+services_without_endpoints=$(kubectl get endpoints -n network | grep "<none>" | wc -l)
+if [ "$services_without_endpoints" -gt 0 ]; then
+    echo "Er zijn nog steeds services zonder endpoints."
+    exit 1
+fi
+
+# Controleer of network-troubleshooting secret is aangemaakt
+if ! kubectl get secret network-troubleshooting -n network &> /dev/null; then
+    echo "Network-troubleshooting secret niet aangemaakt."
+    exit 1
+fi
+
+# Test load balancing door meerdere requests
+success_count=0
+for i in {1..3}; do
+    if kubectl exec debug-pod -n network -- curl -s --connect-timeout 3 -H "Host: frontend.local" http://$ingress_ip &> /dev/null; then
+        ((success_count++))
+    fi
+done
+
+if [ "$success_count" -eq 0 ]; then
+    echo "Load balancing test faalde - geen succesvolle requests."
+    exit 1
+fi
+
+# Controleer overall cluster health na troubleshooting
+total_pods=$(kubectl get pods -n network --no-headers 2>/dev/null | wc -l)
+running_pods=$(kubectl get pods -n network --no-headers 2>/dev/null | grep "Running" | wc -l)
+ready_pods=$(kubectl get pods -n network --no-headers 2>/dev/null | grep "1/1\|2/2" | wc -l)
+
+if [ "$running_pods" -eq 0 ]; then
+    echo "Geen running pods gevonden na troubleshooting."
+    exit 1
+fi
+
+if [ "$ready_pods" -eq 0 ]; then
+    echo "Geen ready pods gevonden na troubleshooting."
+    exit 1
+fi
+
+# Test ingress controller health
+controller_running=$(kubectl get pods -n ingress-nginx -l app.kubernetes.io/component=controller --no-headers 2>/dev/null | grep "Running" | wc -l)
+if [ "$controller_running" -eq 0 ]; then
+    echo "Ingress controller is niet running."
+    exit 1
+fi
+
+# Valideer dat alle drie de stappen zijn gevolgd
+echo "✅ Stap 1: Ingress analyse - Ingress backend configuratie gecontroleerd"
+echo "✅ Stap 2: Service analyse - Service selectors en endpoints gecontroleerd"
+echo "✅ Stap 3: Pod analyse - Pod status en readiness gecontroleerd"
+echo "✅ Problemen gerepareerd en end-to-end flow gevalideerd"
+
+echo "Uitstekend! Je hebt de praktische troubleshooting oefening succesvol voltooid en alle network debugging vaardigheden beheerst."
 exit 0

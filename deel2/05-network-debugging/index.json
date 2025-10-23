@@ -26,11 +26,6 @@
         "title": "Ingress en Load Balancer Debugging",
         "text": "step4/text.md",
         "verify": "step4/verify.sh"
-      },
-      {
-        "title": "Network Troubleshooting Scenario",
-        "text": "step5/text.md",
-        "verify": "step5/verify.sh"
       }
     ],
     "finish": {

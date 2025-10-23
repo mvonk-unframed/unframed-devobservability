@@ -1,102 +1,128 @@
-# Stap 3: Service naar Pod Debugging
+# Stap 3: Pod Analyse
 
-## ⚖️ Service Endpoints Analysis
+## 🔍 Pod Bekijken
 
-Nu services bereikbaar zijn via ingress, gaan we controleren of services correct traffic naar pods routeren. Dit is waar de meeste "service heeft geen endpoints" problemen ontstaan.
+In deze stap analyseren we de pod status om te controleren:
+- Is de pod gestart?
+- Is de pod Ready?
+- Waarom zijn sommige pods niet Ready?
 
-## Service Endpoints Status
+## Pod Status Overzicht
 
-Bekijk welke services endpoints hebben:
-
-```plain
-echo "=== SERVICE ENDPOINTS OVERVIEW ==="
-kubectl get endpoints -n network
-```{{exec}}
-
-Identificeer services zonder endpoints:
+Bekijk alle pods in de network namespace:
 
 ```plain
-kubectl get endpoints -n network | grep "<none>" || echo "✅ Alle services hebben endpoints"
+kubectl get pods -n network
 ```{{exec}}
 
-## Endpoints Detailed Analysis
-
-Analyseer endpoints van werkende services:
+Bekijk pod status in detail:
 
 ```plain
-echo "=== FRONTEND SERVICE ENDPOINTS ==="
-kubectl describe endpoints frontend-service -n network
-
-echo "=== BACKEND SERVICE ENDPOINTS ==="
-kubectl describe endpoints backend-service -n network
+echo "=== POD STATUS DETAILS ==="
+kubectl get pods -n network -o wide
 ```{{exec}}
 
-## Broken Service Analysis
+## Pod Readiness Analyse
 
-Analyseer waarom sommige services geen endpoints hebben:
-
-```plain
-echo "=== BROKEN SERVICE ENDPOINTS ==="
-kubectl describe endpoints broken-service -n network || echo "Service may not exist"
-
-echo "=== FAILING READINESS SERVICE ENDPOINTS ==="
-kubectl describe endpoints failing-readiness-service -n network
-```{{exec}}
-
-## Service Selector vs Pod Labels
-
-Controleer of service selectors matchen met pod labels:
-
-```plain
-echo "=== FRONTEND SERVICE SELECTOR ==="
-kubectl get service frontend-service -n network -o jsonpath='{.spec.selector}' | jq .
-
-echo "=== FRONTEND POD LABELS ==="
-kubectl get pods -n network -l app=frontend -o jsonpath='{.items[*].metadata.labels}' | jq .
-```{{exec}}
-
-## Pod Readiness Status
-
-Controleer waarom pods mogelijk niet ready zijn:
+Controleer welke pods ready zijn en welke niet:
 
 ```plain
 echo "=== POD READINESS STATUS ==="
-kubectl get pods -n network -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase
+kubectl get pods -n network -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount
 ```{{exec}}
 
-## Failing Readiness Probe Analysis
+## Pod Details Bekijken
 
-Analyseer failing readiness probes:
+Analyseer pods die problemen hebben:
 
 ```plain
-echo "=== FAILING READINESS PROBE ANALYSIS ==="
-kubectl get pods -n network -l app=failing-readiness
-
-echo "Readiness probe configuration:"
-kubectl get pods -n network -l app=failing-readiness -o yaml | grep -A 10 "readinessProbe:" | head -15
+echo "=== FRONTEND POD DETAILS ==="
+kubectl describe pod $(kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].metadata.name}') -n network
 ```{{exec}}
 
-## Test Readiness Probe Manually
+```plain
+echo "=== FAILING READINESS POD DETAILS ==="
+kubectl describe pod $(kubectl get pods -n network -l app=failing-readiness -o jsonpath='{.items[0].metadata.name}') -n network
+```{{exec}}
 
-Test de readiness probe endpoint handmatig:
+## Readiness Probe Configuratie
+
+Controleer de readiness probe configuratie:
 
 ```plain
+echo "=== READINESS PROBE CONFIGURATIE ==="
+echo "Frontend pod readiness probe:"
+kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].spec.containers[0].readinessProbe}' | jq .
+
+echo "Failing readiness pod readiness probe:"
+kubectl get pods -n network -l app=failing-readiness -o jsonpath='{.items[0].spec.containers[0].readinessProbe}' | jq .
+
+echo "Backend pod readiness probe:"
+kubectl get pods -n network -l app=backend -o jsonpath='{.items[0].spec.containers[0].readinessProbe}' | jq . || echo "Geen readiness probe geconfigureerd"
+```{{exec}}
+
+## Readiness Probe Testen
+
+Test de readiness probe endpoints handmatig:
+
+```plain
+echo "=== READINESS PROBE TESTING ==="
 FAILING_POD_IP=$(kubectl get pods -n network -l app=failing-readiness -o jsonpath='{.items[0].status.podIP}')
-echo "Testing readiness probe endpoint on $FAILING_POD_IP..."
+echo "Testing failing readiness pod ($FAILING_POD_IP):"
 
-echo "Testing failing endpoint /nonexistent:"
-kubectl exec debug-pod -n network -- curl -s http://$FAILING_POD_IP/nonexistent || echo "❌ Probe endpoint faalt (verwacht)"
+echo "Testing probe endpoint /nonexistent:"
+kubectl run --rm -it debug-pod -n network --image=curlimages/curl -- curl -s --connect-timeout 3 http://$FAILING_POD_IP/nonexistent || echo "❌ Probe endpoint faalt"
 
-echo "Testing working endpoint /:"
-kubectl exec debug-pod -n network -- curl -s http://$FAILING_POD_IP/ | head -2
+echo "Testing root endpoint /:"
+kubectl run --rm -it debug-pod2 -n network --image=curlimages/curl -- curl -s http://$FAILING_POD_IP/ | head -2
 ```{{exec}}
 
-## Fix Readiness Probe
+## Pod Logs Analyseren
+
+Bekijk pod logs voor errors:
+
+```plain
+echo "=== POD LOGS ==="
+echo "Frontend pod logs:"
+kubectl logs $(kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].metadata.name}') -n network --tail=5
+
+echo "Failing readiness pod logs:"
+kubectl logs $(kubectl get pods -n network -l app=failing-readiness -o jsonpath='{.items[0].metadata.name}') -n network --tail=5
+
+echo "Backend pod logs:"
+kubectl logs $(kubectl get pods -n network -l app=backend -o jsonpath='{.items[0].metadata.name}') -n network --tail=5
+```{{exec}}
+
+## Pod Events Controleren
+
+Bekijk events gerelateerd aan pods:
+
+```plain
+echo "=== POD EVENTS ==="
+kubectl get events -n network --field-selector involvedObject.kind=Pod --sort-by=.metadata.creationTimestamp
+```{{exec}}
+
+## Pod Connectiviteit Testen
+
+Test directe pod connectiviteit:
+
+```plain
+echo "=== DIRECTE POD CONNECTIVITEIT ==="
+FRONTEND_POD_IP=$(kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].status.podIP}')
+echo "Testing frontend pod ($FRONTEND_POD_IP):"
+kubectl run --rm -it debug-pod3 -n network --image=curlimages/curl -- curl -s http://$FRONTEND_POD_IP | head -2
+
+BACKEND_POD_IP=$(kubectl get pods -n network -l app=backend -o jsonpath='{.items[0].status.podIP}')
+echo "Testing backend pod ($BACKEND_POD_IP):"
+kubectl run --rm -it debug-pod4 -n network --image=curlimages/curl -- curl -s http://$BACKEND_POD_IP | head -2
+```{{exec}}
+
+## Readiness Probe Repareren
 
 Repareer de failing readiness probe:
 
 ```plain
-echo "=== FIXING READINESS PROBE ==="
+echo "=== READINESS PROBE REPARATIE ==="
 kubectl patch deployment failing-readiness -n network --type='json' -p='[
   {
     "op": "replace",
@@ -109,104 +135,52 @@ kubectl patch deployment failing-readiness -n network --type='json' -p='[
 Wacht tot de fix is toegepast:
 
 ```plain
+echo "Wachten op deployment rollout..."
 kubectl rollout status deployment/failing-readiness -n network --timeout=60s
 ```{{exec}}
 
-## Validate Readiness Fix
+## Reparatie Valideren
 
-Controleer of pods nu ready zijn:
+Controleer of de pod nu ready is:
 
 ```plain
-echo "=== VALIDATING READINESS FIX ==="
+echo "=== VALIDATIE NA REPARATIE ==="
 kubectl get pods -n network -l app=failing-readiness
 
-echo "Service endpoints after fix:"
+echo "Service endpoints na fix:"
 kubectl get endpoints failing-readiness-service -n network
 ```{{exec}}
 
-## Pod IP vs Endpoint IP Verification
+## Pod Analyse Checklist
 
-Vergelijk pod IPs met endpoint IPs:
+### ✅ **Pod Status**
+- Pod is in Running status
+- Container is gestart zonder errors
+- Geen excessive restarts
 
-```plain
-echo "=== POD IP vs ENDPOINT IP ==="
-echo "Frontend pod IPs:"
-kubectl get pods -n network -l app=frontend -o jsonpath='{.items[*].status.podIP}'
+### ✅ **Readiness**
+- Readiness probe is correct geconfigureerd
+- Probe endpoint is bereikbaar
+- Pod is Ready voor traffic
 
-echo -e "\nFrontend endpoint IPs:"
-kubectl get endpoints frontend-service -n network -o jsonpath='{.subsets[*].addresses[*].ip}'
-```{{exec}}
-
-## Service Port Mapping
-
-Controleer port mapping tussen service en pods:
-
-```plain
-echo "=== SERVICE PORT MAPPING ==="
-echo "Backend service ports:"
-kubectl get service backend-service -n network -o jsonpath='{.spec.ports}' | jq .
-
-echo "Backend pod ports:"
-kubectl get pods -n network -l app=backend -o jsonpath='{.items[*].spec.containers[*].ports}' | jq .
-```{{exec}}
-
-## Direct Pod Connectivity Testing
-
-Test directe pod connectivity:
-
-```plain
-echo "=== DIRECT POD CONNECTIVITY ==="
-FRONTEND_POD_IP=$(kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].status.podIP}')
-echo "Testing direct access to frontend pod $FRONTEND_POD_IP:"
-kubectl exec debug-pod -n network -- curl -s http://$FRONTEND_POD_IP | head -2
-
-BACKEND_POD_IP=$(kubectl get pods -n network -l app=backend -o jsonpath='{.items[0].status.podIP}')
-echo "Testing direct access to backend pod $BACKEND_POD_IP:"
-kubectl exec debug-pod -n network -- curl -s http://$BACKEND_POD_IP | head -2
-```{{exec}}
-
-## Service naar Pod Checklist
-
-### ✅ **Service Has Endpoints**
-- Service selector matcht pod labels
-- Pods zijn running en ready
-- Readiness probes slagen
-
-### ✅ **Port Configuration**
-- Service port is correct geconfigureerd
-- Target port matcht pod container port
-- Protocol is consistent
-
-### ✅ **Pod Health**
-- Pods zijn in Running status
-- Readiness probes zijn correct geconfigureerd
-- Pods hebben juiste labels
-
-## Load Balancing Verification
-
-Test load balancing tussen meerdere pods:
-
-```plain
-echo "=== LOAD BALANCING TEST ==="
-for i in {1..3}; do
-  echo "Request $i to frontend service:"
-  kubectl exec debug-pod -n network -- curl -s http://frontend-service | grep -i "welcome\|nginx" | head -1
-done
-```{{exec}}
+### ✅ **Connectiviteit**
+- Pod IP is toegewezen
+- Pod reageert op HTTP requests
+- Applicatie draait correct
 
 ## 🎯 Praktische Opdracht
 
-### Opdracht: Service naar Pod Troubleshooting
+### Opdracht: Pod Status en Readiness Analyse
 
-1. **Identificeer services zonder endpoints** en analyseer waarom
-2. **Repareer readiness probe problemen** die endpoints blokkeren
-3. **Valideer dat services correct naar pods routeren**
+1. **Identificeer pods die niet Ready zijn** en analyseer waarom
+2. **Controleer readiness probe configuratie** en test endpoints
+3. **Repareer readiness probe problemen** zodat pods Ready worden
 
-**Maak een Secret aan** met de naam `service-pod-test`:
+**Maak een Secret aan** met de naam `pod-analysis`:
 
 ```bash
-kubectl create secret generic service-pod-test \
-  --from-literal=service-without-endpoints="<service-zonder-endpoints>" \
+kubectl create secret generic pod-analysis \
+  --from-literal=not-ready-pod="<naam-van-not-ready-pod>" \
   --from-literal=readiness-issue="<readiness-probe-probleem>" \
   --from-literal=fix-applied="<wat-je-hebt-gerepareerd>"
 ```
@@ -214,12 +188,12 @@ kubectl create secret generic service-pod-test \
 ### Verificatie
 
 De verificatie controleert:
-- ✅ Of je services zonder endpoints kunt identificeren
-- ✅ Of je readiness probe problemen kunt diagnosticeren en repareren
-- ✅ Of je service naar pod routing kunt valideren
+- ✅ Of je pod readiness status kunt analyseren
+- ✅ Of je readiness probe problemen kunt identificeren
+- ✅ Of je readiness probe configuratie kunt repareren
 
-**Tip**: Gebruik [`kubectl get endpoints -n network`](kubectl get endpoints -n network) om services zonder endpoints te vinden!
+**Tip**: Gebruik [`kubectl get pods -n network`](kubectl get pods -n network) om pod status te controleren!
 
 ## Volgende Stap
 
-Als services correct naar pods routeren, gaan we in de volgende stap de **complete end-to-end flow** testen!
+Nu we de pod status hebben geanalyseerd, gaan we in de volgende stap een **praktische troubleshooting oefening** doen!

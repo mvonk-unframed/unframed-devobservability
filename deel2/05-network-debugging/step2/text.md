@@ -1,184 +1,177 @@
-# Stap 2: Ingress naar Service Debugging
+# Stap 2: Service Analyse
 
-## 🚪 Ingress Backend Validation
+## 🔍 Service Bekijken
 
-Nu de externe toegang naar ingress werkt, gaan we controleren of ingress correct routeert naar de backend services. Dit is waar veel routing problemen ontstaan.
+In deze stap analyseren we de service configuratie om te controleren:
+- Welke labels worden gebruikt voor pod selectie?
+- Welke pods voldoen aan deze labels?
+- Welke poort wordt doorgestuurd naar de pods?
 
-## Ingress Backend Configuratie
+## Service Overzicht
 
-Bekijk welke services de ingress gebruikt als backend:
+Bekijk alle services in de network namespace:
 
 ```plain
-echo "=== FRONTEND INGRESS BACKEND ==="
-kubectl get ingress frontend-ingress -n network -o jsonpath='{.spec.rules[0].http.paths[0].backend}' | jq .
+kubectl get services -n network
+```{{exec}}
+
+Bekijk de services in detail:
+
+```plain
+echo "=== SERVICE DETAILS ==="
+kubectl describe service frontend-service -n network
 ```{{exec}}
 
 ```plain
-echo "=== API INGRESS BACKEND ==="
-kubectl get ingress api-ingress -n network -o jsonpath='{.spec.rules[0].http.paths[0].backend}' | jq .
+kubectl describe service backend-service -n network
 ```{{exec}}
 
 ```plain
-echo "=== BROKEN INGRESS BACKEND ==="
-kubectl get ingress broken-ingress -n network -o jsonpath='{.spec.rules[0].http.paths[0].backend}' | jq .
+kubectl describe service failing-readiness-service -n network
 ```{{exec}}
 
-## Backend Service Validation
+## Service Selectors Analyseren
 
-Controleer of de backend services bestaan:
+Controleer welke labels elke service gebruikt om pods te selecteren:
 
 ```plain
-echo "=== CHECKING BACKEND SERVICES ==="
-kubectl get service frontend-service -n network || echo "❌ Frontend service missing"
-kubectl get service backend-service -n network || echo "❌ Backend service missing"
-kubectl get service nonexistent-service -n network || echo "❌ Nonexistent service missing (expected)"
+echo "=== SERVICE SELECTORS ==="
+echo "Frontend service selector:"
+kubectl get service frontend-service -n network -o jsonpath='{.spec.selector}' | jq .
+
+echo "Backend service selector:"
+kubectl get service backend-service -n network -o jsonpath='{.spec.selector}' | jq .
+
+echo "Failing readiness service selector:"
+kubectl get service failing-readiness-service -n network -o jsonpath='{.spec.selector}' | jq .
 ```{{exec}}
 
-## Service Port Matching
+## Pod Labels Controleren
 
-Controleer of ingress poorten matchen met service poorten:
+Controleer welke pods voldoen aan de service selectors:
 
 ```plain
-echo "=== FRONTEND SERVICE PORTS ==="
+echo "=== PODS MATCHING SERVICE SELECTORS ==="
+echo "Pods met label app=frontend:"
+kubectl get pods -n network -l app=frontend --show-labels
+
+echo "Pods met label app=backend:"
+kubectl get pods -n network -l app=backend --show-labels
+
+echo "Pods met label app=failing-readiness:"
+kubectl get pods -n network -l app=failing-readiness --show-labels
+```{{exec}}
+
+## Service Endpoints Controleren
+
+Bekijk welke pod IPs de services als endpoints hebben:
+
+```plain
+echo "=== SERVICE ENDPOINTS ==="
+kubectl get endpoints -n network
+```{{exec}}
+
+Analyseer endpoints in detail:
+
+```plain
+echo "=== ENDPOINT DETAILS ==="
+echo "Frontend service endpoints:"
+kubectl describe endpoints frontend-service -n network
+
+echo "Backend service endpoints:"
+kubectl describe endpoints backend-service -n network
+
+echo "Failing readiness service endpoints:"
+kubectl describe endpoints failing-readiness-service -n network
+```{{exec}}
+
+## Poort Doorsturen Analyseren
+
+Controleer hoe services poorten doorsturen naar pods:
+
+```plain
+echo "=== POORT DOORSTUREN ==="
+echo "Frontend service poorten:"
 kubectl get service frontend-service -n network -o jsonpath='{.spec.ports}' | jq .
 
-echo "=== BACKEND SERVICE PORTS ==="
+echo "Frontend pod poorten:"
+kubectl get pods -n network -l app=frontend -o jsonpath='{.items[*].spec.containers[*].ports}' | jq .
+
+echo "Backend service poorten:"
 kubectl get service backend-service -n network -o jsonpath='{.spec.ports}' | jq .
+
+echo "Backend pod poorten:"
+kubectl get pods -n network -l app=backend -o jsonpath='{.items[*].spec.containers[*].ports}' | jq .
 ```{{exec}}
 
-## Ingress naar Service Testing
+## Service Connectiviteit Testen
 
-Test of ingress correct routeert naar services:
+Test directe service toegang:
 
 ```plain
-INGRESS_IP=$(kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.clusterIP}')
+echo "=== SERVICE CONNECTIVITEIT TEST ==="
+echo "Testing frontend service:"
+kubectl run --rm -it debug-pod -n network --image=curlimages/curl -- curl -s http://frontend-service | head -2
 
-echo "=== Testing Ingress to Service Routing ==="
-echo "Frontend via ingress:"
-kubectl exec debug-pod -n network -- curl -s -H "Host: frontend.local" http://$INGRESS_IP | head -2
+echo "Testing backend service:"
+kubectl run --rm -it debug-pod2 -n network --image=curlimages/curl -- curl -s http://backend-service:8080 | head -2
 
-echo "API via ingress:"
-kubectl exec debug-pod -n network -- curl -s -H "Host: api.local" http://$INGRESS_IP/api | head -2
+echo "Testing failing readiness service:"
+kubectl run --rm -it debug-pod3 -n network --image=curlimages/curl -- curl -s --connect-timeout 5 http://failing-readiness-service || echo "❌ Service heeft geen endpoints"
 ```{{exec}}
 
-## Direct Service Testing
+## Probleem Identificatie
 
-Vergelijk met directe service toegang:
+Identificeer services zonder endpoints:
 
 ```plain
-echo "=== Direct Service Access ==="
-echo "Frontend direct:"
-kubectl exec debug-pod -n network -- curl -s http://frontend-service | head -2
-
-echo "Backend direct:"
-kubectl exec debug-pod -n network -- curl -s http://backend-service:8080 | head -2
+echo "=== SERVICES ZONDER ENDPOINTS ==="
+kubectl get endpoints -n network | grep "<none>" && echo "❌ Services zonder endpoints gevonden" || echo "✅ Alle services hebben endpoints"
 ```{{exec}}
 
-## Broken Ingress Analysis
+## Service Analyse Checklist
 
-Analyseer waarom de broken ingress faalt:
+### ✅ **Label Matching**
+- Service selector matcht pod labels
+- Pods hebben de juiste labels
+- Geen typos in label namen
 
-```plain
-echo "=== BROKEN INGRESS ANALYSIS ==="
-kubectl describe ingress broken-ingress -n network
+### ✅ **Pod Beschikbaarheid**
+- Pods zijn running
+- Pods zijn ready (readiness probes slagen)
+- Pods hebben de juiste labels
 
-echo "Testing broken ingress:"
-kubectl exec debug-pod -n network -- curl -s -H "Host: broken.local" http://$INGRESS_IP || echo "Expected failure - backend service doesn't exist"
-```{{exec}}
-
-## Service Discovery van Ingress
-
-Controleer of ingress de backend services kan vinden:
-
-```plain
-echo "=== SERVICE DISCOVERY FROM INGRESS NAMESPACE ==="
-kubectl exec -n ingress-nginx $(kubectl get pods -n ingress-nginx -l app.kubernetes.io/component=controller -o jsonpath='{.items[0].metadata.name}') -- nslookup frontend-service.network.svc.cluster.local
-```{{exec}}
-
-## Ingress Controller Logs voor Backend Errors
-
-Bekijk logs voor backend gerelateerde errors:
-
-```plain
-kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller --tail=20 | grep -i "backend\|service\|upstream" || echo "No backend errors found"
-```{{exec}}
-
-## Fix Broken Ingress
-
-Repareer de broken ingress door de backend service te corrigeren:
-
-```plain
-kubectl patch ingress broken-ingress -n network --type='json' -p='[
-  {
-    "op": "replace",
-    "path": "/spec/rules/0/http/paths/0/backend/service/name",
-    "value": "frontend-service"
-  }
-]'
-```{{exec}}
-
-## Validate Fix
-
-Test de gerepareerde ingress:
-
-```plain
-echo "=== Testing Fixed Ingress ==="
-kubectl exec debug-pod -n network -- curl -s -H "Host: broken.local" http://$INGRESS_IP | head -2
-```{{exec}}
-
-## Ingress naar Service Checklist
-
-### ✅ **Backend Service Exists**
-- Service is aanwezig in de juiste namespace
-- Service naam in ingress is correct gespeld
-- Service is niet in `Terminating` status
-
-### ✅ **Port Configuration**
-- Ingress backend port matcht service port
-- Service port matcht pod target port
-- Protocol (HTTP/HTTPS) is consistent
-
-### ✅ **Service Accessibility**
-- Service is bereikbaar vanuit ingress namespace
-- DNS resolution werkt voor service
-- Service heeft werkende endpoints
-
-## Path-based Routing Testing
-
-Test verschillende paths op de API ingress:
-
-```plain
-echo "=== PATH-BASED ROUTING TEST ==="
-kubectl exec debug-pod -n network -- curl -s -H "Host: api.local" http://$INGRESS_IP/api
-kubectl exec debug-pod -n network -- curl -s -H "Host: api.local" http://$INGRESS_IP/api/health || echo "Path may not exist"
-```{{exec}}
+### ✅ **Poort Configuratie**
+- Service port is correct
+- Target port matcht pod container port
+- Protocol is consistent (TCP/UDP)
 
 ## 🎯 Praktische Opdracht
 
-### Opdracht: Ingress naar Service Troubleshooting
+### Opdracht: Service Label en Poort Analyse
 
-1. **Identificeer de broken ingress** en analyseer de backend configuratie
-2. **Controleer of backend services bestaan** en bereikbaar zijn
-3. **Repareer de ingress configuratie** om naar een werkende service te wijzen
+1. **Identificeer welke labels** elke service gebruikt voor pod selectie
+2. **Controleer welke pods** voldoen aan deze labels
+3. **Analyseer poort doorsturen** van service naar pods
 
-**Maak een Secret aan** met de naam `ingress-service-test`:
+**Maak een Secret aan** met de naam `service-analysis`:
 
 ```bash
-kubectl create secret generic ingress-service-test \
-  --from-literal=broken-backend="<naam-van-broken-backend-service>" \
-  --from-literal=working-backend="<naam-van-werkende-service>" \
-  --from-literal=fix-applied="<wat-je-hebt-gerepareerd>"
+kubectl create secret generic service-analysis \
+  --from-literal=service-without-endpoints="<service-zonder-endpoints>" \
+  --from-literal=label-mismatch="<ja/nee>" \
+  --from-literal=port-mismatch="<ja/nee>"
 ```
 
 ### Verificatie
 
 De verificatie controleert:
-- ✅ Of je ingress backend configuratie kunt analyseren
-- ✅ Of je backend service problemen kunt identificeren
-- ✅ Of je ingress configuratie kunt repareren
+- ✅ Of je service selectors kunt analyseren
+- ✅ Of je pod label matching kunt controleren
+- ✅ Of je poort configuratie kunt valideren
 
-**Tip**: Gebruik [`kubectl describe ingress <name> -n network`](kubectl describe ingress) om backend configuratie te zien!
+**Tip**: Gebruik [`kubectl get endpoints -n network`](kubectl get endpoints -n network) om services zonder endpoints te vinden!
 
 ## Volgende Stap
 
-Als ingress correct routeert naar services, gaan we in de volgende stap kijken naar **Service → Pod** connectivity!
+Nu we de service configuratie hebben geanalyseerd, gaan we in de volgende stap kijken naar de **Pod status en readiness**!

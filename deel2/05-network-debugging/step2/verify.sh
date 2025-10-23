@@ -1,10 +1,16 @@
 #!/bin/bash
 
-# Controleer of de gebruiker service endpoints debugging heeft uitgevoerd
+# Controleer of de gebruiker service analyse heeft uitgevoerd
 
 # Controleer of network namespace bestaat
 if ! kubectl get namespace network &> /dev/null; then
     echo "Network namespace niet gevonden."
+    exit 1
+fi
+
+# Test of gebruiker services kan bekijken
+if ! kubectl get services -n network &> /dev/null; then
+    echo "Kon services niet bekijken."
     exit 1
 fi
 
@@ -14,102 +20,97 @@ if ! kubectl get endpoints -n network &> /dev/null; then
     exit 1
 fi
 
-# Controleer of frontend-service endpoints heeft
+# Controleer service selectors
+frontend_selector=$(kubectl get service frontend-service -n network -o jsonpath='{.spec.selector.app}' 2>/dev/null)
+if [ "$frontend_selector" != "frontend" ]; then
+    echo "Frontend service selector is niet correct."
+    exit 1
+fi
+
+backend_selector=$(kubectl get service backend-service -n network -o jsonpath='{.spec.selector.app}' 2>/dev/null)
+if [ "$backend_selector" != "backend" ]; then
+    echo "Backend service selector is niet correct."
+    exit 1
+fi
+
+# Controleer of pods met juiste labels bestaan
+frontend_pods=$(kubectl get pods -n network -l app=frontend --no-headers 2>/dev/null | wc -l)
+if [ "$frontend_pods" -eq 0 ]; then
+    echo "Geen frontend pods met juiste labels gevonden."
+    exit 1
+fi
+
+backend_pods=$(kubectl get pods -n network -l app=backend --no-headers 2>/dev/null | wc -l)
+if [ "$backend_pods" -eq 0 ]; then
+    echo "Geen backend pods met juiste labels gevonden."
+    exit 1
+fi
+
+# Controleer service endpoints
 frontend_endpoints=$(kubectl get endpoints frontend-service -n network --no-headers 2>/dev/null | awk '{print $2}')
 if [ -z "$frontend_endpoints" ] || [ "$frontend_endpoints" = "<none>" ]; then
     echo "Frontend service heeft geen endpoints."
     exit 1
 fi
 
-# Controleer of broken-service oorspronkelijk geen endpoints had
-# (We testen dit door te kijken of de service bestaat)
-if ! kubectl get service broken-service -n network &> /dev/null; then
-    echo "Broken service niet gevonden."
+backend_endpoints=$(kubectl get endpoints backend-service -n network --no-headers 2>/dev/null | awk '{print $2}')
+if [ -z "$backend_endpoints" ] || [ "$backend_endpoints" = "<none>" ]; then
+    echo "Backend service heeft geen endpoints."
     exit 1
 fi
 
-# Test of failing-readiness service bestaat
-if ! kubectl get service failing-readiness-service -n network &> /dev/null; then
-    echo "Failing-readiness service niet gevonden."
+# Controleer failing-readiness service (zou geen endpoints moeten hebben)
+failing_endpoints=$(kubectl get endpoints failing-readiness-service -n network --no-headers 2>/dev/null | awk '{print $2}')
+if [ "$failing_endpoints" != "<none>" ] && [ -n "$failing_endpoints" ]; then
+    echo "Failing-readiness service zou geen endpoints moeten hebben (pods niet ready)."
+    # Niet kritiek, kan al gerepareerd zijn
+fi
+
+# Controleer poort configuratie
+frontend_service_port=$(kubectl get service frontend-service -n network -o jsonpath='{.spec.ports[0].port}' 2>/dev/null)
+if [ "$frontend_service_port" != "80" ]; then
+    echo "Frontend service port is niet 80."
     exit 1
 fi
 
-# Controleer of failing-readiness pods bestaan maar mogelijk niet ready zijn
-failing_pods=$(kubectl get pods -n network -l app=failing-readiness --no-headers 2>/dev/null | wc -l)
-if [ "$failing_pods" -eq 0 ]; then
-    echo "Geen failing-readiness pods gevonden."
+backend_service_port=$(kubectl get service backend-service -n network -o jsonpath='{.spec.ports[0].port}' 2>/dev/null)
+if [ "$backend_service_port" != "8080" ]; then
+    echo "Backend service port is niet 8080."
     exit 1
 fi
 
-# Test of manual-service is aangemaakt
-if ! kubectl get service manual-service -n network &> /dev/null; then
-    echo "Manual service niet aangemaakt."
+# Test pod poorten
+frontend_pod_port=$(kubectl get pods -n network -l app=frontend -o jsonpath='{.items[0].spec.containers[0].ports[0].containerPort}' 2>/dev/null)
+if [ "$frontend_pod_port" != "80" ]; then
+    echo "Frontend pod container port is niet 80."
     exit 1
 fi
 
-# Test of manual endpoints bestaan
-if ! kubectl get endpoints manual-service -n network &> /dev/null; then
-    echo "Manual endpoints niet gevonden."
+# Controleer of service-analysis secret is aangemaakt
+if ! kubectl get secret service-analysis -n network &> /dev/null; then
+    echo "Service-analysis secret niet aangemaakt."
     exit 1
 fi
 
-# Controleer of broken-service is gerepareerd (zou nu endpoints moeten hebben)
-broken_endpoints_after=$(kubectl get endpoints broken-service -n network --no-headers 2>/dev/null | awk '{print $2}')
-if [ "$broken_endpoints_after" = "<none>" ] || [ -z "$broken_endpoints_after" ]; then
-    echo "Broken service is niet gerepareerd - heeft nog steeds geen endpoints."
-    exit 1
-fi
-
-# Test of de service selector is gecorrigeerd
-broken_selector=$(kubectl get service broken-service -n network -o jsonpath='{.spec.selector.app}' 2>/dev/null)
-if [ "$broken_selector" != "broken-app" ]; then
-    echo "Broken service selector is niet gecorrigeerd."
-    exit 1
-fi
-
-# Test connectivity naar gerepareerde service (als debug pod running is)
+# Test service connectiviteit (als debug pod running is)
 debug_pod_status=$(kubectl get pod debug-pod -n network --no-headers 2>/dev/null | awk '{print $3}')
 if [ "$debug_pod_status" = "Running" ]; then
-    if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://broken-service.network.svc.cluster.local &> /dev/null; then
-        echo "Connectivity naar gerepareerde broken-service faalt."
+    if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://frontend-service &> /dev/null; then
+        echo "Connectivity naar frontend service faalt."
+        exit 1
+    fi
+    
+    if ! kubectl exec debug-pod -n network -- curl -s --connect-timeout 5 http://backend-service:8080 &> /dev/null; then
+        echo "Connectivity naar backend service faalt."
         exit 1
     fi
 fi
 
-# Controleer of database service endpoints heeft
-database_endpoints=$(kubectl get endpoints database-service -n network --no-headers 2>/dev/null | awk '{print $2}')
-if [ -z "$database_endpoints" ] || [ "$database_endpoints" = "<none>" ]; then
-    echo "Database service heeft geen endpoints."
-    exit 1
+# Controleer services zonder endpoints
+services_without_endpoints=$(kubectl get endpoints -n network | grep "<none>" | wc -l)
+if [ "$services_without_endpoints" -eq 0 ]; then
+    echo "Alle services hebben endpoints - dit is goed!"
 fi
 
-# Test of backend service correct port mapping heeft
-backend_service_port=$(kubectl get service backend-service -n network -o jsonpath='{.spec.ports[0].port}' 2>/dev/null)
-if [ "$backend_service_port" != "8080" ]; then
-    echo "Backend service heeft niet de verwachte port 8080."
-    exit 1
-fi
-
-# Controleer of er events zijn voor endpoints
-events_count=$(kubectl get events -n network --field-selector involvedObject.kind=Endpoints --no-headers 2>/dev/null | wc -l)
-if [ "$events_count" -eq 0 ]; then
-    echo "Geen endpoint events gevonden."
-    # Dit is niet kritiek, events kunnen verlopen zijn
-fi
-
-# Test of pods de juiste labels hebben voor service matching
-frontend_pods_with_labels=$(kubectl get pods -n network -l app=frontend --no-headers 2>/dev/null | wc -l)
-if [ "$frontend_pods_with_labels" -eq 0 ]; then
-    echo "Geen frontend pods met juiste labels gevonden."
-    exit 1
-fi
-
-# Controleer of broken-app pods bestaan en nu matched worden door service
-broken_app_pods=$(kubectl get pods -n network -l app=broken-app --no-headers 2>/dev/null | wc -l)
-if [ "$broken_app_pods" -eq 0 ]; then
-    echo "Geen broken-app pods gevonden."
-    exit 1
-fi
-
-echo "Excellent! Je hebt service endpoints debugging beheerst en een broken service succesvol gerepareerd."
+echo "Uitstekend! Je hebt service analyse uitgevoerd en begrijpt hoe services labels gebruiken om pods te selecteren."
 exit 0
